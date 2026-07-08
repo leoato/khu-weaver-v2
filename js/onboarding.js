@@ -491,7 +491,15 @@
         var isFirstTime = !loadProfile();
         var profile = buildProfile();
         saveProfile(profile);
-        applyCompleted(codes); // 이수 체크(localStorage 계약)
+        // OCR 결과는 기존 이수 체크를 지우지 않고 새로 인식된 과목만 병합한다.
+        var merged = {};
+        try {
+            if (typeof completedCourses !== "undefined" && completedCourses) {
+                Array.prototype.forEach.call(Array.from(completedCourses), function (code) { merged[code] = true; });
+            }
+        } catch (e) {}
+        codes.forEach(function (code) { merged[code] = true; });
+        applyCompleted(Object.keys(merged)); // 이수 체크(localStorage 계약)
 
         // 성적을 app.js의 과목 귀속 구조에 주입(계산 로직은 건드리지 않음)
         try {

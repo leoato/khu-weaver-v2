@@ -17,7 +17,8 @@
 3. Build command는 비워두고, Publish directory는 `.`로 둡니다.
 4. 사이트 설정의 Environment variables에 `GEMINI_API_KEY`를 추가합니다.
 5. 필요하면 `GEMINI_MODEL`도 추가합니다. 기본값은 `gemini-2.5-flash`입니다.
-6. 배포된 주소에서 온보딩의 스크린샷 업로드 분석을 테스트합니다.
+6. 사용량 초과나 일시 오류 대비가 필요하면 `GEMINI_FALLBACK_MODELS`를 추가합니다. 예: `gemini-3.5-flash`
+7. 배포된 주소에서 온보딩의 스크린샷 업로드 분석을 테스트합니다.
 
 ## Netlify Drop만 쓸 때의 주의점
 
