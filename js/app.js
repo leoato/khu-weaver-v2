@@ -174,26 +174,49 @@
     function relationChipHtml(code, type) {
         const course = getCourseByCode(code);
         const label = course ? course.name : code;
-        return `<button class="mrp-chip ${type}" type="button" data-code="${code}">${label}</button>`;
+        return `<button class="mrb-chip ${type}" type="button" data-code="${code}">${label}</button>`;
     }
 
-    function relationRowHtml(label, codes, type) {
+    function relationGroupHtml(label, codes, type) {
         const content = codes.length
             ? codes.map(code => relationChipHtml(code, type)).join('')
-            : '<span class="mrp-empty">연결된 과목이 없어요</span>';
+            : '<span class="mrb-empty">연결된 과목이 없어요</span>';
         return `
-            <div class="mrp-row">
-                <span class="mrp-label">${label}</span>
-                <div class="mrp-chips">${content}</div>
-            </div>
+            <section class="mrb-group ${type}">
+                <span class="mrb-label">${label}</span>
+                <div class="mrb-chips">${content}</div>
+            </section>
         `;
     }
 
     function clearMobileRelationPanel() {
         mobileRelationCode = null;
-        document.querySelectorAll('.mobile-relation-panel').forEach(panel => panel.remove());
-        document.querySelectorAll('.timeline-course-card.mobile-relation-open').forEach(card => {
+        document.querySelectorAll('.mobile-relation-panel, .mobile-relation-board').forEach(panel => panel.remove());
+        document.querySelectorAll('.timeline-course-card.mobile-relation-open, .timeline-course-card.mobile-relation-dim, .timeline-course-card.mobile-related-prereq, .timeline-course-card.mobile-related-followup').forEach(card => {
             card.classList.remove('mobile-relation-open');
+            card.classList.remove('mobile-relation-dim');
+            card.classList.remove('mobile-related-prereq');
+            card.classList.remove('mobile-related-followup');
+        });
+    }
+
+    function applyMobileRelationClasses(code, prereqCodes, followupCodes) {
+        const prereqSet = new Set(prereqCodes);
+        const followupSet = new Set(followupCodes);
+
+        document.querySelectorAll('.timeline-course-card').forEach(otherCard => {
+            const otherCode = otherCard.dataset.code;
+            otherCard.classList.remove('mobile-relation-open', 'mobile-relation-dim', 'mobile-related-prereq', 'mobile-related-followup');
+
+            if (otherCode === code) {
+                otherCard.classList.add('mobile-relation-open');
+            } else if (prereqSet.has(otherCode)) {
+                otherCard.classList.add('mobile-related-prereq');
+            } else if (followupSet.has(otherCode)) {
+                otherCard.classList.add('mobile-related-followup');
+            } else {
+                otherCard.classList.add('mobile-relation-dim');
+            }
         });
     }
 
@@ -217,34 +240,52 @@
             return;
         }
 
-        clearMobileRelationPanel();
-        mobileRelationCode = code;
-        card.classList.add('mobile-relation-open');
-
         const prereqCodes = uniqueRelationCodes(getRecursivePrereqs(code), 'parent');
         const followupCodes = uniqueRelationCodes(getRecursiveFollowups(code), 'child');
         const hasAnyRelation = prereqCodes.length > 0 || followupCodes.length > 0;
+        const selected = getCourseByCode(code);
+        const selectedName = selected ? selected.name : code;
+        const selectedMeta = selected ? `${selected.code} · ${selected.credits}학점 · ${selected.track}` : code;
+
+        clearMobileRelationPanel();
+        mobileRelationCode = code;
+        applyMobileRelationClasses(code, prereqCodes, followupCodes);
 
         const panel = document.createElement('div');
-        panel.className = 'mobile-relation-panel';
+        panel.className = 'mobile-relation-board';
         panel.dataset.forCode = code;
         panel.innerHTML = `
-            <div class="mrp-head">
-                <span>선수/후수 관계</span>
-                <button class="mrp-close" type="button" aria-label="관계 패널 닫기">닫기</button>
+            <div class="mrb-head">
+                <span>관계 집중 보기</span>
+                <button class="mrb-close" type="button" aria-label="관계 보드 닫기">닫기</button>
             </div>
             ${hasAnyRelation
-                ? relationRowHtml('선수 과목', prereqCodes, 'prereq') + relationRowHtml('후수 과목', followupCodes, 'followup')
-                : '<div class="mrp-no-links">연결된 선수/후수 과목이 없어요</div>'}
+                ? `<div class="mrb-map">
+                    ${relationGroupHtml('선수 과목', prereqCodes, 'prereq')}
+                    <div class="mrb-center">
+                        <span class="mrb-center-kicker">선택 과목</span>
+                        <strong>${selectedName}</strong>
+                        <small>${selectedMeta}</small>
+                    </div>
+                    ${relationGroupHtml('후수 과목', followupCodes, 'followup')}
+                </div>`
+                : `<div class="mrb-single">
+                    <div class="mrb-center">
+                        <span class="mrb-center-kicker">선택 과목</span>
+                        <strong>${selectedName}</strong>
+                        <small>${selectedMeta}</small>
+                    </div>
+                    <div class="mrb-no-links">연결된 선수/후수 과목이 없어요</div>
+                </div>`}
         `;
 
         card.insertAdjacentElement('afterend', panel);
 
-        panel.querySelector('.mrp-close').addEventListener('click', (e) => {
+        panel.querySelector('.mrb-close').addEventListener('click', (e) => {
             e.stopPropagation();
             clearMobileRelationPanel();
         });
-        panel.querySelectorAll('.mrp-chip').forEach(chip => {
+        panel.querySelectorAll('.mrb-chip').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 e.stopPropagation();
                 jumpToRelationCourse(chip.dataset.code);
@@ -602,7 +643,7 @@
 
     // 빈 공간(카드 바깥) 클릭 시 핀 고정 해제
     document.addEventListener('click', (e) => {
-        if (isMobileRoadmap() && !e.target.closest('.timeline-course-card') && !e.target.closest('.mobile-relation-panel')) {
+        if (isMobileRoadmap() && !e.target.closest('.timeline-course-card') && !e.target.closest('.mobile-relation-panel, .mobile-relation-board')) {
             clearMobileRelationPanel();
         }
         if (pinnedNode) {
