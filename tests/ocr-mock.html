@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>OCR 목업 테스트 (fetch 스텁 · 실키 불필요)</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { font-family: 'Noto Sans KR', sans-serif; padding: 24px; max-width: 760px; margin: 0 auto; }
+  #panel { border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; background: var(--bg-card); }
+  #log { font-family: monospace; font-size: 13px; white-space: pre-wrap; background: hsl(220,22%,97%); border-radius: 10px; padding: 14px; }
+  .pass { color: #1a7f37; } .fail { color: #c22; font-weight: 700; }
+  button.run { padding: 9px 16px; border-radius: 8px; border: none; background: var(--khu-burgundy); color: #fff; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h2>KHU-Weaver · OCR 목업 테스트</h2>
+  <p>실제 Gemini 키 없이 <code>fetch</code>를 스텁으로 갈아끼워 <b>매칭 → 확인표 → 적용</b> 흐름을 검증합니다.
+     아래 버튼을 누르면 자동 시나리오가 실행되고, 밑의 실제 OCR UI에서 수동으로도 확인할 수 있습니다.</p>
+  <div id="panel">
+    <button class="run" id="run">자동 시나리오 실행</button>
+    <div id="log" style="margin-top:14px;">대기 중…</div>
+  </div>
+
+  <h3>실제 OCR UI (목업 응답 기준)</h3>
+  <div class="ob-shot-panel active onboarding-card ob-card-wide" style="max-width:100%;">
+    <div id="ob-ocr-root"></div>
+  </div>
+
+  <!-- 테스트 설정: 더미 키(활성화) + 목업 커리큘럼/응답 -->
+  <script>
+    window.KW_CONFIG = { GEMINI_API_KEY: "TEST-DUMMY-KEY", GEMINI_MODEL: "mock" };
+
+    // 최소 커리큘럼(실데이터 대신) — 매칭 대상
+    var MOCK_COURSES = [
+      { code: "EE202", name: "회로이론", credits: 3, type: "전공 필수", year: 2, sem: 1 },
+      { code: "AMTH1009", name: "미분적분학", credits: 3, type: "전공 기초", year: 1, sem: 1 },
+      { code: "EE201", name: "전자기학1", credits: 3, type: "전공 필수", year: 2, sem: 1 }
+    ];
+    window.getCurriculum = function () { return { courses: MOCK_COURSES, prerequisites: [], tracks: {}, gradReq: 130 }; };
+
+    // Gemini 응답 스텁: 코드매칭 / 이름(공백)매칭 / 교양(미매칭) 3건
+    var MOCK_GEMINI = {
+      candidates: [{ content: { parts: [{ text: JSON.stringify([
+        { name: "회로이론", code: "EE202", credits: 3, grade: "A0", semester: "2-1" },
+        { name: "미분 적분학", credits: 3, grade: "B+" },
+        { name: "성찰과표현", credits: 3, grade: "A+" }
+      ]) }] } }]
+    };
+    var _origFetch = window.fetch;
+    window.fetch = function (url, opt) {
+      console.log("[stub fetch]", url);
+      return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve(MOCK_GEMINI); } });
+    };
+  </script>
+  <script src="../js/ocr.js"></script>
+  <script>
+    var log = document.getElementById("log");
+    function line(ok, msg) { log.innerHTML += '\n<span class="' + (ok ? 'pass' : 'fail') + '">' + (ok ? 'PASS' : 'FAIL') + '</span> ' + msg; }
+
+    document.getElementById("run").addEventListener("click", function () {
+      log.textContent = "실행 중…";
+      var applied = null;
+      KW_OCR.enter({
+        getProfile: function () { return { dept: "EE", year: "2024" }; },
+        onApply: function (gm) { applied = gm; },
+        onBack: function () {},
+        onFallbackB: function () {}
+      });
+      // 파일 주입(캔버스 리사이즈 우회) 후 분석 시작
+      KW_OCR._injectFilesForTest([{ name: "t.jpg", mime: "image/jpeg", base64: "AAAA", dataUrl: "" }]);
+      var analyze = document.getElementById("ocr-analyze");
+      analyze.disabled = false;
+      analyze.click();
+
+      // 결과표가 렌더될 때까지 폴링
+      var tries = 0;
+      var iv = setInterval(function () {
+        tries++;
+        var applyBtn = document.getElementById("ocr-apply");
+        if (applyBtn || tries > 40) {
+          clearInterval(iv);
+          log.textContent = "결과 검증:";
+          var okRows = document.querySelectorAll("#ob-ocr-root .ocr-row.ok").length;
+          var warnRows = document.querySelectorAll("#ob-ocr-root .ocr-row.warn").length;
+          line(okRows === 2, "전공 매칭 2건 (코드 EE202 + 이름 미분적분학) → 실제 " + okRows);
+          line(warnRows === 1, "미매칭 1건 (성찰과표현/교양) → 실제 " + warnRows);
+          if (applyBtn) {
+            applyBtn.click();
+            var codes = applied ? Object.keys(applied) : [];
+            line(codes.length === 2 && applied.EE202 === "A0" && applied.AMTH1009 === "B+",
+                 "적용 gradeMap = " + JSON.stringify(applied) + " (기대 {EE202:A0, AMTH1009:B+}, 교양 제외)");
+          } else {
+            line(false, "결과표가 렌더되지 않음");
+          }
+        }
+      }, 60);
+    });
+  </script>
+</body>
+</html>

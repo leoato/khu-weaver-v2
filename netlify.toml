@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/ocr"
+  to = "/.netlify/functions/ocr"
+  status = 200
+
+[template.environment]
+  GEMINI_API_KEY = "Gemini API key used only by the Netlify OCR function"

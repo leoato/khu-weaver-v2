@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KHU-Weaver | 경희대학교 전자공학과 지능형 전공 설계 플랫폼</title>
+    <!-- Google Fonts: Outfit, Inter, Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 경희 프리미엄 밝은 모드(Light Theme) 컬러 시스템 */
+            --khu-burgundy-raw: 343, 66%, 33%; /* HSL 버건디 */
+            --khu-burgundy: hsl(var(--khu-burgundy-raw));
+            --khu-burgundy-light: hsl(343, 66%, 45%);
+            --khu-burgundy-glow: hsla(343, 66%, 33%, 0.15);
+            --khu-gold: hsl(37, 60%, 50%);
+            --khu-gold-glow: hsla(37, 60%, 50%, 0.1);
+            
+            /* 라이트 테마 배경 및 텍스트 매핑 */
+            --bg-dark: hsl(220, 20%, 97%); /* 부드러운 쿨 그레이 연한 배경 */
+            --bg-card: hsl(0, 0%, 100%); /* 완벽한 백색 카드 */
+            --bg-card-hover: hsl(220, 20%, 94%); /* 마우스 호버 시 은은한 그레이 */
+            --text-primary: hsl(220, 25%, 12%); /* 진한 다크 차콜 (가독성 극대화) */
+            --text-secondary: hsl(220, 10%, 35%); /* 중후한 다크 그레이 */
+            --text-muted: hsl(220, 10%, 55%); /* 연한 회색 */
+            
+            --accent-green: hsl(142, 65%, 35%);
+            --accent-red: hsl(354, 70%, 45%);
+            --accent-blue: hsl(210, 70%, 45%);
+            --border-color: rgba(0, 0, 0, 0.07); /* 아주 부드러운 외곽선 */
+            --glass-bg: rgba(255, 255, 255, 0.85); /* 백색 아크릴 유리 질감 */
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* 학문 트랙별 아이덴티티 컬러 정의 (가독성 향상) */
+            --track-math: hsl(45, 90%, 45%); /* 수학: 밝은 골드 옐로우 */
+            --track-phys: hsl(15, 80%, 50%); /* 물리: 주황색 */
+            --track-comp: hsl(200, 85%, 45%); /* 컴퓨터/SW: 선명한 스카이 블루 */
+            --track-csy: hsl(343, 66%, 40%); /* 회로시스템: 경희 버건디 */
+            --track-sw: hsl(145, 60%, 35%); /* 반도체/파동: 에메랄드 그린 */
+            --track-cs: hsl(265, 60%, 45%); /* 통신/신호: 로열 퍼플 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 10% 20%, hsla(343, 66%, 90%, 0.4) 0px, transparent 50%),
+                radial-gradient(at 90% 80%, hsla(37, 60%, 90%, 0.3) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--khu-burgundy-light);
+        }
+
+        /* 레이아웃 & 컨테이너 */
+        .container {
+            max-width: 1600px; /* 컨테이너 폭을 넓혀 전체적으로 광활하고 여유 있는 시야 제공 */
+            margin: 0 auto;
+            padding: 20px 40px;
+        }
+
+        /* 프리미엄 헤더 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-emblem {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--khu-burgundy), var(--khu-burgundy-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            border: 1px solid var(--khu-gold);
+            box-shadow: 0 4px 10px rgba(140, 29, 64, 0.15);
+        }
+
+        .logo-text h1 {
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, var(--text-primary), var(--khu-burgundy));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .header-meta {
+            text-align: right;
+        }
+
+        .badge-academic {
+            display: inline-block;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            color: var(--khu-burgundy);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+
+        /* 의존성 경고 배너 구역 (Prerequisite Alert Panel) */
+        #alert-panel {
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .alert-card {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.08), rgba(140, 29, 64, 0.04));
+            border: 1px solid var(--accent-red);
+            border-radius: 14px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.08);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .alert-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(244, 67, 54, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            flex-shrink: 0;
+        }
+
+        .alert-content h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-red);
+            margin-bottom: 2px;
+        }
+
+        .alert-content p {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* 메인 콘텐츠 그리드 (2열 레이아웃) */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* 윈도우 스타일 카드 공통 */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--khu-burgundy), var(--khu-gold));
+            opacity: 0.9;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: -0.3px;
+        }
+
+        .card-title span {
+            background: linear-gradient(135deg, var(--text-primary) 60%, var(--khu-burgundy-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 왼쪽 열: 학업 포트폴리오 분석 (Academic Query) */
+        .sidebar-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 차트 캔버스 컨테이너 */
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 14px;
+            padding: 15px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        canvas#radarChart {
+            max-width: 100%;
+            height: 280px;
+        }
+
+        .chart-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+            margin-top: 15px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* 수강 학점 현황 표시 */
+        .credit-dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 5px;
+        }
+
+        .credit-stat-card {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .credit-stat-card .label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .credit-stat-card .value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--khu-burgundy);
+        }
+
+        .credit-stat-card .value span {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        /* 과목 수강 정보 입력 패널 (체크박스 목록) */
+        .curriculum-selector {
+            max-height: 480px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.01);
+            padding: 10px;
+        }
+
+        .sem-group {
+            margin-bottom: 15px;
+        }
+
+        .sem-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--khu-burgundy);
+            padding: 5px 8px;
+            border-bottom: 1px solid rgba(140, 29, 64, 0.15);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .sem-header .sem-badge {
+            font-size: 10px;
+            background: rgba(140, 29, 64, 0.06);
+            color: var(--khu-burgundy-light);
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+
+        .course-checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .course-checkbox-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            user-select: none;
+        }
+
+        .course-checkbox-item:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .course-checkbox-item.checked {
+            border-color: var(--khu-burgundy-light);
+            background: hsla(343, 66%, 97%, 0.6); /* 연한 핑크 버건디 배경 */
+        }
+
+        .course-label-side {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .course-checkbox-item input[type="checkbox"] {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--text-muted);
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition-smooth);
+        }
+
+        .course-checkbox-item input[type="checkbox"]:checked {
+            background-color: var(--khu-burgundy);
+            border-color: var(--khu-burgundy);
+        }
+
+        .course-checkbox-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: bold;
+            top: -2px;
+            left: 2px;
+        }
+
+        .course-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .course-meta-side {
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .course-code {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-secondary);
+            display: block;
+        }
+
+        .course-type-badge {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .badge-essential { background: rgba(140, 29, 64, 0.08); color: var(--khu-burgundy); border: 1px solid rgba(140, 29, 64, 0.15); }
+        .badge-basic { background: rgba(33, 150, 243, 0.08); color: var(--accent-blue); border: 1px solid rgba(33, 150, 243, 0.15); }
+        .badge-selective { background: rgba(0, 0, 0, 0.03); color: var(--text-secondary); border: 1px solid var(--border-color); }
+
+        /* 오른쪽 열: 맞춤형 커리어 로드맵 (Career Path & Alert) */
+        .workspace-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 트랙 선택기 (Tab Buttons) */
+        .track-selectors {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .track-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 8px;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .track-btn span.en {
+            font-family: 'Outfit', sans-serif;
+            font-size: 9px;
+            color: var(--text-muted);
+            font-weight: 400;
+            text-transform: uppercase;
+        }
+
+        .track-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--khu-burgundy-glow);
+            color: var(--text-primary);
+        }
+
+        .track-btn.active {
+            background: linear-gradient(135deg, var(--khu-burgundy), var(--khu-burgundy-light));
+            border-color: var(--khu-gold);
+            color: #ffffff;
+            box-shadow: 0 4px 12px var(--khu-burgundy-glow);
+        }
+
+        .track-btn.active span.en {
+            color: var(--khu-gold);
+        }
+
+        /* 벤치마킹 & 프리셋 제어기 */
+        .presets-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .presets-title {
+            font-weight: 700;
+            color: var(--khu-burgundy);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .presets-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preset-btn {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--khu-burgundy);
+        }
+
+        /* 이수체계 시각화 타임라인 (Timeline Roadmap Canvas) */
+        .roadmap-timeline-wrapper {
+            position: relative;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 25px 25px 25px 75px; /* 왼쪽 패딩을 75px로 넓혀 동일 학년 C자 우회선이 바깥으로 잘리지 않도록 안전지대 확보 */
+            border: 1px solid var(--border-color);
+            min-height: 520px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+
+        .timeline-years-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 45px; /* 폭을 넓혀 여유 있는 배치 실현 */
+            height: 100%;
+            position: relative;
+            z-index: 2; /* SVG 캔버스보다 확실하게 위 레이어로 올려 연결선들이 카드 뒤로 숨어 은폐되도록 처리 */
+        }
+
+        .timeline-year-col {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-right: 1px dashed rgba(0, 0, 0, 0.05);
+            padding-right: 10px;
+        }
+
+        .timeline-year-col:last-child {
+            border-right: none;
+            padding-right: 0;
+        }
+
+        .year-col-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--khu-burgundy);
+            text-align: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+
+        .year-col-title span.ko {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            display: block;
+        }
+
+        .year-courses-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            min-height: 480px;
+            height: 100%;
+        }
+
+        /* 세부 분야 트랙별 수평 정렬 슬롯 */
+        .track-slot {
+            min-height: 90px;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 0;
+            position: relative;
+            transition: var(--transition-smooth);
+            z-index: 2;
+        }
+
+        .track-slot:last-child {
+            border-bottom: none;
+        }
+
+        /* 분야별 은은한 수평 가이드 배경 효과 */
+        .track-slot::after {
+            content: '';
+            position: absolute;
+            left: -8px;
+            right: -8px;
+            top: 4px;
+            bottom: 4px;
+            background: rgba(0, 0, 0, 0.012);
+            border-radius: 8px;
+            opacity: 0;
+            transition: var(--transition-smooth);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .track-slot:hover::after {
+            opacity: 1;
+        }
+
+        /* 타임라인 과목 카드 가독성 대폭 향상 */
+        .timeline-course-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            z-index: 2;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            user-select: none;
+        }
+
+        /* 왼쪽 엣지 보더로 학문 분야 직관적 분류 (Color Coding) */
+        .timeline-course-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            border-radius: 6px 0 0 6px;
+            background: var(--text-muted);
+            transition: var(--transition-smooth);
+        }
+
+        /* 카드 소속 트랙별 색상 바인딩 (가독성 향상 핵심) */
+        .timeline-course-card[data-track-type="MATH"]::before { background: var(--track-math); }
+        .timeline-course-card[data-track-type="PHYS"]::before { background: var(--track-phys); }
+        .timeline-course-card[data-track-type="COMP"]::before { background: var(--track-comp); }
+        .timeline-course-card[data-track-type="CSY"]::before { background: var(--track-csy); }
+        .timeline-course-card[data-track-type="SW"]::before { background: var(--track-sw); }
+        .timeline-course-card[data-track-type="CS"]::before { background: var(--track-cs); }
+
+        .timeline-course-card.checked-course {
+            border-color: var(--khu-burgundy-light);
+            background: hsl(343, 66%, 98%) !important; /* 완전한 불투명도로 배경 아래 연결선 비침 원천 차단 */
+            box-shadow: 0 2px 8px rgba(140, 29, 64, 0.06);
+        }
+
+        .timeline-course-card:hover {
+            transform: translateY(-2px);
+            background: var(--bg-card);
+            border-color: var(--khu-gold);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+        }
+
+        /* 마우스 호버 시 다단계 연쇄 하이라이트 & 아웃포커스 인터랙션 */
+        .timeline-course-card.highlight-focus {
+            border-color: var(--khu-burgundy-light);
+            box-shadow: 0 0 16px var(--khu-burgundy-glow);
+            transform: translateY(-3px) scale(1.03);
+            z-index: 10;
+            background: var(--bg-card);
+        }
+
+        .timeline-course-card.highlight-prereq {
+            border-color: var(--khu-gold);
+            box-shadow: 0 0 12px var(--khu-gold-glow);
+            transform: translateY(-2px);
+            z-index: 8;
+            background: var(--bg-card);
+        }
+
+        .timeline-course-card.highlight-followup {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 12px rgba(33, 150, 243, 0.12);
+            transform: translateY(-2px);
+            z-index: 8;
+            background: var(--bg-card);
+        }
+
+        .timeline-course-card.fade-out-node {
+            border-color: rgba(0, 0, 0, 0.04) !important;
+            box-shadow: none !important;
+            transform: scale(0.97);
+            pointer-events: none;
+            transition: var(--transition-smooth);
+        }
+
+        .timeline-course-card.fade-out-node .t-card-name,
+        .timeline-course-card.fade-out-node .t-card-code,
+        .timeline-course-card.fade-out-node .t-card-meta {
+            opacity: 0.35 !important; /* 글씨가 뭉개지지 않고 선명하게 정독 가능하도록 투명도 상향 */
+            filter: none !important; /* 비직관적인 블러 효과 전격 제거 */
+        }
+
+        .timeline-course-card.fade-out-node::before {
+            opacity: 0.2 !important;
+        }
+
+        /* 트랙 선택 시 활성 과목 카드 하이라이트 스타일 */
+        .timeline-course-card.active-in-track {
+            border-color: var(--khu-burgundy-light) !important;
+            box-shadow: 0 0 12px var(--khu-burgundy-glow) !important;
+            background: hsl(343, 66%, 99%) !important; /* 완전한 불투명도로 배경 아래 연결선 비침 원천 차단 */
+            transform: translateY(-1px);
+            z-index: 5;
+        }
+
+        /* 전체보기 모드이거나, 트랙 활성 카드일 때는 불투명도 100% 보장 */
+        .track-all .timeline-course-card,
+        .timeline-course-card.active-in-track {
+            opacity: 1.0 !important;
+            filter: none !important;
+            transition: var(--transition-smooth);
+        }
+
+        /* 전체보기 모드가 아닐 때만 비활성 카드를 은은하게 반투명 처리 */
+        /* 전체보기 모드가 아닐 때만 비활성 카드의 텍스트와 보더를 은은하게 뮤트 처리 (배경 비침을 원천 차단하기 위해 opacity 속성 배제) */
+        body:not(.track-all) .timeline-course-card:not(.active-in-track) {
+            border-color: rgba(0, 0, 0, 0.03) !important;
+            box-shadow: none !important;
+            transition: var(--transition-smooth);
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track) .t-card-name {
+            color: var(--text-muted) !important;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track) .t-card-code {
+            color: var(--text-muted) !important;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track) .t-card-meta {
+            opacity: 0.4;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track)::before {
+            opacity: 0.25 !important;
+        }
+
+        /* 비활성 카드 마우스 호버 시에는 완전히 밝아져서 개별 탐색 지원 */
+        body:not(.track-all) .timeline-course-card:not(.active-in-track):hover {
+            border-color: var(--khu-gold) !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track):hover .t-card-name,
+        body:not(.track-all) .timeline-course-card:not(.active-in-track):hover .t-card-code {
+            color: var(--text-primary) !important;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track):hover .t-card-meta {
+            opacity: 1.0 !important;
+        }
+
+        body:not(.track-all) .timeline-course-card:not(.active-in-track):hover::before {
+            opacity: 1.0 !important;
+        }
+
+        /* 1학년 빈 전공선택 슬롯의 시각적 소거 스타일 */
+        .track-slot.elective-slot.empty-slot {
+            border: none !important;
+            background: none !important;
+            box-shadow: none !important;
+            pointer-events: none;
+        }
+
+        .track-slot.elective-slot.empty-slot::before {
+            display: none !important;
+        }
+
+        .track-slot.elective-slot.empty-slot::after {
+            display: none !important;
+        }
+
+        /* 동적 관계 뱃지 스타일 정의 */
+        .relation-badge {
+            position: absolute;
+            top: -8px;
+            right: 8px;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: var(--transition-smooth);
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .timeline-course-card.highlight-focus .relation-badge {
+            opacity: 1;
+            transform: translateY(0);
+            background: var(--khu-burgundy);
+            color: #ffffff;
+        }
+
+        .timeline-course-card.highlight-prereq .relation-badge {
+            opacity: 1;
+            transform: translateY(0);
+            background: var(--khu-gold);
+            color: #ffffff;
+        }
+
+        .timeline-course-card.highlight-followup .relation-badge {
+            opacity: 1;
+            transform: translateY(0);
+            background: var(--accent-blue);
+            color: #ffffff;
+        }
+
+        /* 6번째 기타 전공선택 및 심화 옵션 슬롯 전용 스타일 */
+        .elective-slot {
+            min-height: 110px !important;
+            background: rgba(0, 0, 0, 0.018);
+            border: 1px dashed rgba(0, 0, 0, 0.07) !important;
+            border-radius: 12px;
+            padding: 10px 8px !important;
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 6px !important;
+            margin-top: 5px;
+        }
+
+        /* 슬롯 상단 투명 워터마크 안내 문구 */
+        .elective-slot::before {
+            content: '선택 및 심화 교과 옵션 (Electives)';
+            position: absolute;
+            bottom: 4px;
+            right: 8px;
+            font-size: 8.5px;
+            font-weight: 700;
+            color: var(--text-muted);
+            opacity: 0.35;
+            pointer-events: none;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 0.5px;
+            z-index: 1;
+        }
+
+        /* 콤팩트 미니 칩 카드 스타일 */
+        .timeline-course-card.mini-chip {
+            padding: 5px 8px !important;
+            font-size: 11px !important;
+            border-radius: 8px !important;
+            flex-grow: 1;
+            min-width: 100px;
+            max-width: calc(50% - 3px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+        }
+
+        .timeline-course-card.mini-chip .t-card-code {
+            font-size: 8px !important;
+            margin-bottom: 0px !important;
+        }
+
+        .timeline-course-card.mini-chip .t-card-name {
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .timeline-course-card.mini-chip .t-card-meta {
+            display: none !important; /* 공간 절약을 위해 메타 숨김 */
+        }
+        
+        .timeline-course-card.mini-chip .relation-badge {
+            top: -10px !important;
+            right: 4px !important;
+            font-size: 7px !important;
+            padding: 1px 4px !important;
+        }
+
+        .t-card-code {
+            font-family: 'Outfit', sans-serif;
+            font-size: 8.5px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .t-card-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.3;
+            font-size: 12px;
+        }
+
+        .t-card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 9px;
+            color: var(--text-secondary);
+        }
+
+        .t-card-track {
+            background: rgba(0, 0, 0, 0.04);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 8.5px;
+        }
+
+        /* 선후수 연계 시각화 커넥터선 처리용 SVG 캔버스 */
+        .svg-connections-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1; /* 카드(z-index: 2) 밑으로 레이어를 정착시켜 카드 영역 통과 시 완전히 숨겨지도록 배치 */
+        }
+
+        .svg-connections-canvas path {
+            transition: stroke 0.25s, stroke-width 0.25s, opacity 0.25s;
+        }
+
+        /* 연관 활성 연결선 스타일 및 빛 물결 흐름 애니메이션 */
+        .svg-connections-canvas path.active-connection {
+            stroke-width: 2.5px !important;
+            stroke-dasharray: 6, 4;
+            animation: connectionFlow 0.8s linear infinite;
+        }
+
+        @keyframes connectionFlow {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        /* 하단 산업 트렌드 분석 패널 (Industry-Academic Linkage Panel) */
+        .trend-panel {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 10px;
+        }
+
+        .trend-chart-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .trend-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 13px;
+        }
+
+        .trend-bar-label {
+            width: 140px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .trend-bar-container {
+            flex-grow: 1;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .trend-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--khu-burgundy), var(--khu-gold));
+            border-radius: 5px;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .trend-bar-value {
+            width: 45px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--khu-burgundy);
+            text-align: right;
+        }
+
+        .trend-text-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: rgba(0, 0, 0, 0.01);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .trend-text-desc h5 {
+            font-size: 14px;
+            color: var(--khu-burgundy);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        /* 애니메이션 키프레임 */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 반응형 미디어 쿼리 */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .trend-panel {
+                grid-column: span 1;
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 헤더 영역 -->
+    <header>
+        <div class="logo-section">
+            <div class="logo-emblem">KW</div>
+            <div class="logo-text">
+                <h1>KHU-Weaver</h1>
+                <p>경희대학교 전자공학과 지능형 전공 설계 및 이수체계 로드맵</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <span class="badge-academic">2025학년도 교육과정 기준</span>
+        </div>
+    </header>
+
+    <!-- 실시간 선수과목 의존성 경고 배너 패널 -->
+    <div id="alert-panel">
+        <div class="alert-card">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <h4 id="alert-title">[이수 체계 오류 감지]</h4>
+                <p id="alert-msg">선수 필수 과목이 누락되었습니다. 대체 이수 경로를 확인하십시오.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 대시보드 그리드 -->
+    <div class="main-grid">
+        
+        <!-- 왼쪽 열: 학업 포트폴리오 분석 -->
+        <div class="sidebar-panel">
+            
+            <!-- 1. 역량 분석 대시보드 -->
+            <div class="card">
+                <h3 class="card-title">
+                    <span>학업 포트폴리오 분석</span>
+                    <span class="badge-academic" style="font-size: 10px; color: var(--accent-green); border-color: rgba(76, 175, 80, 0.2);">정량화 분석</span>
+                </h3>
+                
+                <div class="chart-container">
+                    <canvas id="radarChart" width="380" height="280"></canvas>
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--track-csy);"></span>회로/시스템 설계 (CSY)</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--track-sw);"></span>반도체/공정설계 (SW)</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--track-comp);"></span>임베디드/SW융합 (COMP)</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--track-cs);"></span>통신/신호처리 (CS)</div>
+                    </div>
+                </div>
+
+                <div class="credit-dashboard" style="margin-top: 15px;">
+                    <div class="credit-stat-card">
+                        <span class="label">기취득 학점</span>
+                        <span class="value" id="stat-completed-credits">0<span>학점</span></span>
+                    </div>
+                    <div class="credit-stat-card">
+                        <span class="label">졸업 이수율</span>
+                        <span class="value" id="stat-completion-rate">0<span>%</span></span>
+                    </div>
+                    <div class="credit-stat-card">
+                        <span class="label">전공 평점</span>
+                        <span class="value">4.12<span>/4.5</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 기이수 과목 입력 리스트 -->
+            <div class="card">
+                <h3 class="card-title">
+                    <span>기이수 교과목 입력</span>
+                    <span class="badge-academic" style="font-size: 10px;">수강 체크</span>
+                </h3>
+                <div class="curriculum-selector" id="curriculum-selector-container">
+                    <!-- JS에 의해 학년/학기별 교과목 체크박스가 동적 생성됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 열: 맞춤형 커리어 로드맵 -->
+        <div class="workspace-panel">
+            
+            <!-- 1. 5대 전문 트랙 선택 탭 -->
+            <div class="track-selectors">
+                <button class="track-btn active" data-track="all">
+                    <span>전체 이수체계</span>
+                    <span class="en">All Curriculum</span>
+                </button>
+                <button class="track-btn" data-track="semiconductor">
+                    <span>반도체 소자 및 공정</span>
+                    <span class="en">Semiconductor</span>
+                </button>
+                <button class="track-btn" data-track="embedded">
+                    <span>임베디드 및 IoT</span>
+                    <span class="en">Embedded IoT</span>
+                </button>
+                <button class="track-btn" data-track="ai">
+                    <span>인공지능 및 신호처리</span>
+                    <span class="en">AI & Signal</span>
+                </button>
+                <button class="track-btn" data-track="telecom">
+                    <span>초고주파 및 차세대통신</span>
+                    <span class="en">RF & Telecom</span>
+                </button>
+                <button class="track-btn" data-track="circuit">
+                    <span>시스템 회로 설계</span>
+                    <span class="en">Circuit Design</span>
+                </button>
+            </div>
+
+            <!-- 2. 프리셋 / 선배 벤치마킹 연계 -->
+            <div class="presets-row">
+                <div class="presets-title">
+                    <span>💡 우수 졸업 포트폴리오 벤치마킹</span>
+                </div>
+                <div class="presets-buttons">
+                    <button class="preset-btn" id="preset-sem-senior">반도체 대기업 합격 선배 빌드</button>
+                    <button class="preset-btn" id="preset-ai-senior">자율주행 R&D 대학원 선배 빌드</button>
+                    <button class="preset-btn" id="preset-reset">초기화</button>
+                </div>
+            </div>
+
+            <!-- 3. 실시간 로드맵 타임라인 시각화 맵 -->
+            <div class="roadmap-timeline-wrapper">
+                <div class="timeline-years-grid" id="roadmap-timeline-grid">
+                    <!-- 학년별 4개의 컬럼이 위치하며, 과목 카드와 연결선 SVG가 배치됩니다 -->
+                    <div class="timeline-year-col" data-year="1">
+                        <div class="year-col-title">1st Year <span class="ko">1학년 기초공학</span></div>
+                        <div class="year-courses-list" id="col-year-1">
+                            <div class="track-slot" id="col-year-1-slot-0" data-slot="0"></div>
+                            <div class="track-slot" id="col-year-1-slot-1" data-slot="1"></div>
+                            <div class="track-slot" id="col-year-1-slot-2" data-slot="2"></div>
+                            <div class="track-slot" id="col-year-1-slot-3" data-slot="3"></div>
+                            <div class="track-slot" id="col-year-1-slot-4" data-slot="4"></div>
+                            <div class="track-slot elective-slot empty-slot" id="col-year-1-slot-5" data-slot="5"></div>
+                        </div>
+                    </div>
+                    <div class="timeline-year-col" data-year="2">
+                        <div class="year-col-title">2nd Year <span class="ko">2학년 전공핵심</span></div>
+                        <div class="year-courses-list" id="col-year-2">
+                            <div class="track-slot" id="col-year-2-slot-0" data-slot="0"></div>
+                            <div class="track-slot" id="col-year-2-slot-1" data-slot="1"></div>
+                            <div class="track-slot" id="col-year-2-slot-2" data-slot="2"></div>
+                            <div class="track-slot" id="col-year-2-slot-3" data-slot="3"></div>
+                            <div class="track-slot" id="col-year-2-slot-4" data-slot="4"></div>
+                            <div class="track-slot elective-slot" id="col-year-2-slot-5" data-slot="5"></div>
+                        </div>
+                    </div>
+                    <div class="timeline-year-col" data-year="3">
+                        <div class="year-col-title">3rd Year <span class="ko">3학년 심화공학</span></div>
+                        <div class="year-courses-list" id="col-year-3">
+                            <div class="track-slot" id="col-year-3-slot-0" data-slot="0"></div>
+                            <div class="track-slot" id="col-year-3-slot-1" data-slot="1"></div>
+                            <div class="track-slot" id="col-year-3-slot-2" data-slot="2"></div>
+                            <div class="track-slot" id="col-year-3-slot-3" data-slot="3"></div>
+                            <div class="track-slot" id="col-year-3-slot-4" data-slot="4"></div>
+                            <div class="track-slot elective-slot" id="col-year-3-slot-5" data-slot="5"></div>
+                        </div>
+                    </div>
+                    <div class="timeline-year-col" data-year="4">
+                        <div class="year-col-title">4th Year <span class="ko">4학년 실무융합</span></div>
+                        <div class="year-courses-list" id="col-year-4">
+                            <div class="track-slot" id="col-year-4-slot-0" data-slot="0"></div>
+                            <div class="track-slot" id="col-year-4-slot-1" data-slot="1"></div>
+                            <div class="track-slot" id="col-year-4-slot-2" data-slot="2"></div>
+                            <div class="track-slot" id="col-year-4-slot-3" data-slot="3"></div>
+                            <div class="track-slot" id="col-year-4-slot-4" data-slot="4"></div>
+                            <div class="track-slot elective-slot" id="col-year-4-slot-5" data-slot="5"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 연결선 처리를 위한 백그라운드 SVG -->
+                <svg class="svg-connections-canvas" id="svg-canvas">
+                    <defs>
+                        <!-- 선후수 화살표 머리 마커 정의 -->
+                        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="context-stroke" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 하단: 산업 트렌드 분석 & 기원 배경 명시 -->
+        <div class="card trend-panel">
+            <div>
+                <h3 class="card-title"><span>산업계 수요 연계 기술 트렌드 분석</span></h3>
+                <div class="trend-chart-list">
+                    <div class="trend-bar-row">
+                        <span class="trend-bar-label">지능형 반도체 소자</span>
+                        <div class="trend-bar-container"><div class="trend-bar-fill" style="width: 92%;"></div></div>
+                        <span class="trend-bar-value">92%</span>
+                    </div>
+                    <div class="trend-bar-row">
+                        <span class="trend-bar-label">인공지능 및 딥러닝</span>
+                        <div class="trend-bar-container"><div class="trend-bar-fill" style="width: 86%;"></div></div>
+                        <span class="trend-bar-value">86%</span>
+                    </div>
+                    <div class="trend-bar-row">
+                        <span class="trend-bar-label">시스템 온 칩(SoC)</span>
+                        <div class="trend-bar-container"><div class="trend-bar-fill" style="width: 78%;"></div></div>
+                        <span class="trend-bar-value">78%</span>
+                    </div>
+                    <div class="trend-bar-row">
+                        <span class="trend-bar-label">임베디드 로보틱스</span>
+                        <div class="trend-bar-container"><div class="trend-bar-fill" style="width: 65%;"></div></div>
+                        <span class="trend-bar-value">65%</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <h3 class="card-title"><span>KHU-Weaver 설계 배경 및 큐레이션 기작</span></h3>
+                <div class="trend-text-desc">
+                    <h5>🎮 대표적 데이터 기업 'OP.GG'의 분석 철학 이식</h5>
+                    <p style="margin-bottom: 10px; line-height: 1.5; color: var(--text-secondary);">
+                        본 플랫폼은 복잡한 게임 리그 오브 레전드(LoL)의 원천 경기 데이터들을 고도로 수집·가공하여 직관적인 룬 및 아이템 큐레이션 빌드 설계도를 제공하는 **게임 데이터 전문 기업 'OP.GG'의 피드백 알고리즘에서 참신한 영감을 얻었습니다.**
+                    </p>
+                    <p style="line-height: 1.5; color: var(--text-secondary);">
+                        이수 규정이 매우 까다롭고 진로 트랙이 넓은 전자공학 교육과정을 학생 개개인의 수강 학업 상태와 유기적으로 실시간 매핑하여, 선배들의 합격 preset 및 대체 수강 경로를 다이렉트로 제공하는 지능형 학업 길잡이 플랫폼을 지향합니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. 경희대학교 전자공학과 실제 코어 교과 24과목 데이터셋 (Adventure Design 제거 및 논리회로 2학년 이동)
+    // 1. 경희대학교 전자공학과 실제 코어 교과 52과목 데이터셋 (Adventure Design 제거, 논리회로 2학년 이동 및 28개 전공선택/기초 전격 주입)
+    const courses = [
+        // 1학년 1학기
+        {code:"AMTH1009", name:"미분적분학", type:"전공 기초", credits:3, year:1, sem:1, track:"MATH"},
+        {code:"AMTH1004", name:"선형대수", type:"전공 기초", credits:3, year:1, sem:1, track:"MATH"},
+        {code:"APHY1002", name:"물리학및실험1", type:"전공 기초", credits:3, year:1, sem:1, track:"PHYS"},
+        {code:"SWCON104", name:"웹/파이선프로그래밍", type:"전공 기초", credits:3, year:1, sem:1, track:"COMP"},
+        
+        // 1학년 2학기
+        {code:"AMTH1003", name:"고급미분적분학", type:"전공 기초", credits:3, year:1, sem:2, track:"MATH"},
+        {code:"APHY1003", name:"물리학및실험2", type:"전공 기초", credits:3, year:1, sem:2, track:"PHYS"},
+        {code:"AMTH1001", name:"미분방정식", type:"전공 필수", credits:3, year:1, sem:2, track:"MATH"},
+        
+        // 2학년 1학기
+        {code:"EE209", name:"논리회로", type:"전공 필수", credits:3, year:2, sem:1, track:"CSY"},
+        {code:"EE201", name:"전자기학1", type:"전공 필수", credits:3, year:2, sem:1, track:"SW"},
+        {code:"EE202", name:"회로이론", type:"전공 필수", credits:3, year:2, sem:1, track:"CSY"},
+        {code:"EE203", name:"물리전자", type:"전공 필수", credits:3, year:2, sem:1, track:"SW"},
+        {code:"EE213", name:"객체지향프로그래밍", type:"전공 기초", credits:3, year:2, sem:1, track:"COMP"},
+        
+        // 2학년 2학기
+        {code:"EE207", name:"기초회로실험", type:"전공 필수", credits:2, year:2, sem:2, track:"CSY"},
+        {code:"EE241", name:"자료구조및알고리즘", type:"전공 선택", credits:3, year:2, sem:2, track:"COMP"},
+        {code:"EE211", name:"확률및랜덤변수", type:"전공 기초", credits:3, year:2, sem:2, track:"CS"},
+        {code:"EE210", name:"신호와시스템", type:"전공 필수", credits:3, year:2, sem:2, track:"CS"},
+        {code:"EE204", name:"전자기학2", type:"전공 선택", credits:3, year:2, sem:2, track:"SW", isMinor:true},
+        {code:"EE242", name:"회로이론2", type:"전공 선택", credits:3, year:2, sem:2, track:"CSY", isMinor:true},
+        
+        // 3학년 1학기
+        {code:"EE206", name:"전자회로1", type:"전공 필수", credits:3, year:3, sem:1, track:"CSY"},
+        {code:"EE321", name:"반도체공학", type:"전공 선택", credits:3, year:3, sem:1, track:"SW"},
+        {code:"EE328", name:"반도체공정", type:"전공 선택", credits:3, year:3, sem:1, track:"SW"},
+        {code:"EE341", name:"디지털통신", type:"전공 선택", credits:3, year:3, sem:1, track:"CS"},
+        {code:"EE342", name:"디지털신호처리", type:"전공 선택", credits:3, year:3, sem:1, track:"CS"},
+        {code:"EE364", name:"마이크로프로세서", type:"전공 선택", credits:3, year:3, sem:1, track:"CSY"},
+        {code:"EE361", name:"디지털회로설계", type:"전공 선택", credits:3, year:3, sem:1, track:"CSY", isMinor:true},
+        {code:"EE362", name:"집적회로실험", type:"전공 선택", credits:2, year:3, sem:1, track:"CSY", isMinor:true},
+        {code:"EE363", name:"자동제어", type:"전공 선택", credits:3, year:3, sem:1, track:"CSY", isMinor:true},
+        {code:"CSE203", name:"컴퓨터구조", type:"전공 선택", credits:3, year:3, sem:1, track:"COMP", isMinor:true},
+        {code:"CSE302", name:"컴퓨터네트워크", type:"전공 선택", credits:3, year:3, sem:1, track:"CS", isMinor:true},
+        
+        // 3학년 2학기
+        {code:"EE365", name:"전자회로2", type:"전공 선택", credits:3, year:3, sem:2, track:"CSY"},
+        {code:"EE367", name:"임베디드시스템설계", type:"전공 선택", credits:3, year:3, sem:2, track:"CSY"},
+        {code:"EE371", name:"머신러닝개론", type:"전공 선택", credits:3, year:3, sem:2, track:"COMP"},
+        {code:"EE366", name:"전자회로실험", type:"전공 선택", credits:2, year:3, sem:2, track:"CSY", isMinor:true},
+        {code:"EE325", name:"초고주파공학", type:"전공 선택", credits:3, year:3, sem:2, track:"SW", isMinor:true},
+        {code:"EE370", name:"소프트웨어랩", type:"전공 선택", credits:2, year:3, sem:2, track:"COMP", isMinor:true},
+        {code:"EE441", name:"정보및부호이론", type:"전공 선택", credits:3, year:3, sem:2, track:"CS", isMinor:true},
+        {code:"EE343", name:"DSP실험", type:"전공 선택", credits:2, year:3, sem:2, track:"CS", isMinor:true},
+        {code:"EE324", name:"전파통신실험", type:"전공 선택", credits:2, year:3, sem:2, track:"CS", isMinor:true},
+        
+        // 4학년 1학기
+        {code:"EE422", name:"안테나공학", type:"전공 선택", credits:3, year:4, sem:1, track:"SW"},
+        {code:"EE463", name:"VLSI설계", type:"전공 선택", credits:3, year:4, sem:1, track:"CSY"},
+        {code:"EE497", name:"종합설계", type:"전공 필수", credits:3, year:4, sem:1, track:"CSY"},
+        {code:"EE421", name:"광전자공학", type:"전공 선택", credits:3, year:4, sem:1, track:"SW", isMinor:true},
+        {code:"EE442", name:"이동통신", type:"전공 선택", credits:3, year:4, sem:1, track:"CS", isMinor:true},
+        {code:"EE443", name:"무선데이타통신", type:"전공 선택", credits:3, year:4, sem:1, track:"CS", isMinor:true},
+        {code:"EE444", name:"영상신호처리", type:"전공 선택", credits:3, year:4, sem:1, track:"CS", isMinor:true},
+        {code:"EE496", name:"반도체집적회로", type:"전공 선택", credits:3, year:4, sem:1, track:"SW", isMinor:true},
+        {code:"EE486", name:"졸업논문", type:"전공 필수", credits:0, year:4, sem:1, track:"CSY", isMinor:true},
+        
+        // 4학년 2학기
+        {code:"EE470", name:"SoC설계", type:"전공 선택", credits:3, year:4, sem:2, track:"CSY"},
+        {code:"EE423", name:"디스플레이공학", type:"전공 선택", credits:3, year:4, sem:2, track:"SW", isMinor:true},
+        {code:"EE445", name:"실감미디어시스템", type:"전공 선택", credits:3, year:4, sem:2, track:"CS", isMinor:true},
+        {code:"EE461", name:"로봇제어공학", type:"전공 선택", credits:3, year:4, sem:2, track:"CSY", isMinor:true}
+    ];
+
+    // 2. 엄밀한 선후수 규칙 정의 (Adventure Design 제거 및 28개 신규 전공선택 연동 확장)
+    const prerequisites = [
+        {target:"AMTH1003", prereqs:["AMTH1009"]},
+        {target:"APHY1003", prereqs:["APHY1002"]},
+        {target:"AMTH1001", prereqs:["AMTH1009"]},
+        {target:"EE213", prereqs:["SWCON104"]},
+        {target:"EE207", prereqs:["EE202"]},
+        {target:"EE206", prereqs:["EE202"]},
+        {target:"EE210", prereqs:["AMTH1009"]},
+        {target:"EE204", prereqs:["EE201"]},
+        {target:"EE242", prereqs:["EE202"]},
+        {target:"EE321", prereqs:["EE203"]},
+        {target:"EE328", prereqs:["EE203"]},
+        {target:"EE365", prereqs:["EE206"]},
+        {target:"EE341", prereqs:["EE210", "EE211"]},
+        {target:"EE342", prereqs:["EE210"]},
+        {target:"EE367", prereqs:["EE209"]},
+        {target:"EE463", prereqs:["EE206"]},
+        {target:"EE470", prereqs:["EE206"]},
+        {target:"EE497", prereqs:["EE207", "EE210", "EE213"]},
+        
+        // 신규 추가 과목 연계 규칙
+        {target:"EE361", prereqs:["EE209"]},
+        {target:"EE362", prereqs:["EE209"]},
+        {target:"EE363", prereqs:["EE202"]},
+        {target:"CSE203", prereqs:["EE209"]},
+        {target:"CSE302", prereqs:["EE209"]},
+        {target:"EE325", prereqs:["EE201"]},
+        {target:"EE366", prereqs:["EE206"]},
+        {target:"EE370", prereqs:["SWCON104"]},
+        {target:"EE441", prereqs:["EE211"]},
+        {target:"EE343", prereqs:["EE210"]},
+        {target:"EE324", prereqs:["EE201", "EE210"]},
+        {target:"EE421", prereqs:["EE203"]},
+        {target:"EE442", prereqs:["EE341"]},
+        {target:"EE443", prereqs:["EE211"]},
+        {target:"EE444", prereqs:["EE210"]},
+        {target:"EE496", prereqs:["EE206"]},
+        {target:"EE423", prereqs:["EE203"]},
+        {target:"EE445", prereqs:["EE210"]},
+        {target:"EE461", prereqs:["EE202"]}
+    ];
+
+    // 3. 5대 핵심 진로 트랙 맞춤 과목 정의 (Adventure Design 제거 및 논리회로 연동)
+    const tracks = {
+        semiconductor: ["AMTH1009", "APHY1002", "APHY1003", "EE201", "EE203", "EE321", "EE328", "EE422"],
+        embedded: ["SWCON104", "EE209", "EE213", "EE364", "EE367", "EE470", "EE497"],
+        ai: ["AMTH1009", "AMTH1004", "SWCON104", "EE213", "EE210", "EE342", "EE371"],
+        telecom: ["AMTH1009", "APHY1002", "EE201", "EE210", "EE211", "EE341", "EE422"],
+        circuit: ["EE202", "EE209", "EE207", "EE206", "EE365", "EE463", "EE470"]
+    };
+
+    // 상태 관리 (이수한 과목 코드 배열)
+    let completedCourses = new Set();
+    let currentTrack = "all";
+    let activeHoverNode = null;
+
+    // 4. 초기화 및 UI 생성
+    window.addEventListener('DOMContentLoaded', () => {
+        initCurriculumSelector();
+        updateTrackActiveCourses();
+        initRadarChart();
+        drawConnections();
+        setupEventListeners();
+    });
+
+    // 수강 체크박스 생성
+    function initCurriculumSelector() {
+        const container = document.getElementById('curriculum-selector-container');
+        container.innerHTML = "";
+
+        // 학년별 그룹화
+        for (let year = 1; year <= 4; year++) {
+            const yearCourses = courses.filter(c => c.year === year);
+            if (yearCourses.length === 0) continue;
+
+            const semGroup = document.createElement('div');
+            semGroup.className = 'sem-group';
+            
+            const semHeader = document.createElement('div');
+            semHeader.className = 'sem-header';
+            semHeader.innerHTML = `<span>${year}학년 전공 로드맵</span> <span class="sem-badge">${yearCourses.length}개 과목</span>`;
+            semGroup.appendChild(semHeader);
+
+            const list = document.createElement('div');
+            list.className = 'course-checkbox-list';
+
+            yearCourses.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'course-checkbox-item';
+                item.dataset.code = c.code;
+
+                const isEssential = c.type === "전공 필수";
+                const isBasic = c.type === "전공 기초";
+                const badgeClass = isEssential ? 'badge-essential' : (isBasic ? 'badge-basic' : 'badge-selective');
+
+                item.innerHTML = `
+                    <div class="course-label-side">
+                        <input type="checkbox" id="chk-${c.code}" value="${c.code}">
+                        <span class="course-name">${c.name}</span>
+                    </div>
+                    <div class="course-meta-side">
+                        <span class="course-code">${c.code}</span>
+                        <span class="course-type-badge ${badgeClass}">${c.type} (${c.credits}학점)</span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+
+            semGroup.appendChild(list);
+            container.appendChild(semGroup);
+        }
+    }
+
+    // 트랙 및 주요도별 수평 정렬용 헬퍼 함수
+    function getTrackSlotIndex(c) {
+        if (c.isMinor) return 5; // 비주요/기타 과목은 무조건 최하단 6번째 슬롯(index 5)
+        
+        switch(c.track) {
+            case "MATH":
+            case "PHYS":
+                return 0;
+            case "CSY":
+                return 1;
+            case "SW":
+                return 2;
+            case "COMP":
+                return 3;
+            case "CS":
+                return 4;
+            default:
+                return 0;
+        }
+    }
+
+    // 재귀적으로 모든 선수과목 체인을 추적하는 DFS 함수
+    function getRecursivePrereqs(nodeCode, visited = new Set()) {
+        let relations = [];
+        if (visited.has(nodeCode)) return relations;
+        visited.add(nodeCode);
+
+        prerequisites.forEach(rule => {
+            if (rule.target === nodeCode) {
+                rule.prereqs.forEach(p => {
+                    relations.push({ parent: p, child: nodeCode });
+                    relations = relations.concat(getRecursivePrereqs(p, visited));
+                });
+            }
+        });
+        return relations;
+    }
+
+    // 재귀적으로 모든 후수과목 체인을 추적하는 DFS 함수
+    function getRecursiveFollowups(nodeCode, visited = new Set()) {
+        let relations = [];
+        if (visited.has(nodeCode)) return relations;
+        visited.add(nodeCode);
+
+        prerequisites.forEach(rule => {
+            if (rule.prereqs.includes(nodeCode)) {
+                relations.push({ parent: nodeCode, child: rule.target });
+                relations = relations.concat(getRecursiveFollowups(rule.target, visited));
+            }
+        });
+        return relations;
+    }
+
+    // 타임라인 내에 과목 카드 동적 로드 (세부 분야 수평 6대 Row 슬롯 주입 구조)
+    function updateTrackActiveCourses() {
+        // 모든 6개 슬롯 엘리먼트 초기화
+        for (let y = 1; y <= 4; y++) {
+            for (let s = 0; s < 6; s++) {
+                const slot = document.getElementById(`col-year-${y}-slot-${s}`);
+                if (slot) slot.innerHTML = "";
+            }
+        }
+
+        // ALL 탭 대응 클래스 처리
+        if (currentTrack === "all") {
+            document.body.classList.add('track-all');
+        } else {
+            document.body.classList.remove('track-all');
+        }
+
+        const trackCourses = currentTrack === "all" 
+            ? courses.map(c => c.code) 
+            : courses.filter(c => c.type === "전공 필수" || c.type === "전공 기초" || (tracks[currentTrack] || []).includes(c.code)).map(c => c.code);
+
+        courses.forEach(c => {
+            const slotIdx = getTrackSlotIndex(c);
+            const slot = document.getElementById(`col-year-${c.year}-slot-${slotIdx}`);
+            if (!slot) return;
+
+            const card = document.createElement('div');
+            card.className = 'timeline-course-card';
+            if (c.isMinor) {
+                card.classList.add('mini-chip'); // 기타 옵션 과목은 콤팩트 미니 칩 적용
+            }
+            card.id = `t-card-${c.code}`;
+            card.dataset.code = c.code;
+            card.dataset.trackType = c.track;
+
+            const isTrackActive = trackCourses.includes(c.code);
+            if (isTrackActive) {
+                card.classList.add('active-in-track');
+            }
+
+            if (completedCourses.has(c.code)) {
+                card.classList.add('checked-course');
+            }
+
+            card.innerHTML = `
+                <div class="relation-badge"></div>
+                <span class="t-card-code">${c.code}</span>
+                <div class="t-card-name">${c.name}</div>
+                <div class="t-card-meta">
+                    <span>${c.credits}학점</span>
+                    <span class="t-card-track">${c.track}</span>
+                </div>
+            `;
+            slot.appendChild(card);
+        });
+
+        // 탭 활성화 갱신
+        document.querySelectorAll('.track-btn').forEach(btn => {
+            if (btn.dataset.track === currentTrack) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // 카드 렌더링 후 선 그리기
+        setTimeout(drawConnections, 50);
+        
+        // 카드들 호버 이벤트 새로 바인딩
+        bindCardHoverEvents();
+    }
+
+    // 선후수 연결 관계선 SVG 그리기 (재귀 연쇄 하이라이트 및 물결 애니메이션 탑재)
+    function drawConnections() {
+        const svg = document.getElementById('svg-canvas');
+        
+        // path 다 지우기
+        const paths = svg.querySelectorAll('path');
+        paths.forEach(p => p.remove());
+
+        const wrapper = document.querySelector('.roadmap-timeline-wrapper');
+        const wrapperRect = wrapper.getBoundingClientRect();
+
+        // 호버 연관 관계 스캔 (재귀 추적)
+        let activeRelations = [];
+        let activePrereqCodes = new Set();
+        let activeFollowupCodes = new Set();
+
+        if (activeHoverNode) {
+            const prereqPaths = getRecursivePrereqs(activeHoverNode);
+            const followupPaths = getRecursiveFollowups(activeHoverNode);
+            
+            activeRelations = [...prereqPaths, ...followupPaths];
+            
+            prereqPaths.forEach(p => activePrereqCodes.add(p.parent));
+            followupPaths.forEach(p => activeFollowupCodes.add(p.child));
+        }
+
+        const trackCourses = currentTrack === "all" 
+            ? courses.map(c => c.code) 
+            : courses.filter(c => c.type === "전공 필수" || c.type === "전공 기초" || (tracks[currentTrack] || []).includes(c.code)).map(c => c.code);
+
+        // === [핵심 가독성 혁신: 시작/도착점 수직 다중 포트 분산 분배 알고리즘] ===
+        let portAllocations = {};
+        
+        // Prerequisites 의존성을 돌면서 각 과목 노드별 총 입/출력 연결선 개수를 사전에 파악합니다
+        prerequisites.forEach(rule => {
+            const targetCard = document.getElementById(`t-card-${rule.target}`);
+            if (!targetCard) return;
+
+            rule.prereqs.forEach(prereqCode => {
+                const prereqCard = document.getElementById(`t-card-${prereqCode}`);
+                if (!prereqCard) return;
+
+                // prereqCode는 나가는 포트 (Output Port)
+                if (!portAllocations[prereqCode]) {
+                    portAllocations[prereqCode] = { inTotal: 0, outTotal: 0, inCurrent: 0, outCurrent: 0 };
+                }
+                portAllocations[prereqCode].outTotal++;
+
+                // targetCode는 들어오는 포트 (Input Port)
+                if (!portAllocations[rule.target]) {
+                    portAllocations[rule.target] = { inTotal: 0, outTotal: 0, inCurrent: 0, outCurrent: 0 };
+                }
+                portAllocations[rule.target].inTotal++;
+            });
+        });
+
+        let sameYearCount = 0; // 동일 학년 연결선 겹침 방지 다단계 카운터 초기화
+        prerequisites.forEach(rule => {
+            const targetCard = document.getElementById(`t-card-${rule.target}`);
+            if (!targetCard) return;
+
+            rule.prereqs.forEach(prereqCode => {
+                const prereqCard = document.getElementById(`t-card-${prereqCode}`);
+                if (!prereqCard) return;
+
+                const tRect = targetCard.getBoundingClientRect();
+                const pRect = prereqCard.getBoundingClientRect();
+
+                // === [동일 학년 내부 선수 교과 연계선 여백 우회 분기] ===
+                const isSameYear = prereqCard.closest('.timeline-year-col') === targetCard.closest('.timeline-year-col');
+
+                let x1, y1, x2, y2, controlOffset, pathData;
+
+                if (isSameYear) {
+                    sameYearCount++;
+                    const sameYearOffset = (sameYearCount % 5) * 8; // 8px씩 X축 격차를 만들어 동일 학년 선 겹침 차단
+                    
+                    // 동일 학년 선수과목 연계선은 카드를 관통하지 않고 왼쪽 바깥쪽 여백을 따라 수직 우회하도록 제어
+                    // X좌표도 다단계로 미세하게 격차 분산하여 평행선 다발 형태로 표시
+                    x1 = pRect.left - wrapperRect.left - 4 - (sameYearCount % 5) * 3;
+                    x2 = tRect.left - wrapperRect.left - 6 - (sameYearCount % 5) * 3;
+
+                    const outIdx = portAllocations[prereqCode].outCurrent++;
+                    const outTotal = portAllocations[prereqCode].outTotal;
+                    const outOffset = outTotal > 1 ? ((outIdx / (outTotal - 1)) - 0.5) * Math.min(16, outTotal * 3) : 0;
+                    y1 = (pRect.top + pRect.bottom) / 2 - wrapperRect.top + outOffset;
+
+                    const inIdx = portAllocations[rule.target].inCurrent++;
+                    const inTotal = portAllocations[rule.target].inTotal;
+                    const inOffset = inTotal > 1 ? ((inIdx / (inTotal - 1)) - 0.5) * Math.min(16, inTotal * 3) : 0;
+                    y2 = (tRect.top + tRect.bottom) / 2 - wrapperRect.top + inOffset;
+
+                    const dy = Math.abs(y2 - y1);
+                    // 왼쪽 바깥(음수 방향)으로 제어점을 다단계 오프셋과 함께 배치하여 자연스럽게 왼쪽을 돌아서 떨어지도록 튜닝
+                    controlOffset = -Math.min(70, 24 + dy * 0.08 + sameYearOffset);
+                    pathData = `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 + controlOffset} ${y2}, ${x2} ${y2}`;
+                } else {
+                    // 타 학년 간 연결선은 기존의 표준 오른쪽 -> 왼쪽 흐름 유지
+                    x1 = pRect.right - wrapperRect.left;
+                    x2 = tRect.left - wrapperRect.left - 6;
+
+                    const outIdx = portAllocations[prereqCode].outCurrent++;
+                    const outTotal = portAllocations[prereqCode].outTotal;
+                    const outOffset = outTotal > 1 ? ((outIdx / (outTotal - 1)) - 0.5) * Math.min(24, outTotal * 4.5) : 0;
+                    y1 = (pRect.top + pRect.bottom) / 2 - wrapperRect.top + outOffset;
+
+                    const inIdx = portAllocations[rule.target].inCurrent++;
+                    const inTotal = portAllocations[rule.target].inTotal;
+                    const inOffset = inTotal > 1 ? ((inIdx / (inTotal - 1)) - 0.5) * Math.min(24, inTotal * 4.5) : 0;
+                    y2 = (tRect.top + tRect.bottom) / 2 - wrapperRect.top + inOffset;
+
+                    const dist = x2 - x1;
+                    controlOffset = dist * 0.35;
+                    pathData = `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 - controlOffset} ${y2}, ${x2} ${y2}`;
+                }
+
+                const bothCompleted = completedCourses.has(prereqCode) && completedCourses.has(rule.target);
+                const prereqCompletedOnly = completedCourses.has(prereqCode);
+                
+                let strokeColor = 'rgba(0, 0, 0, 0.05)'; 
+                let strokeWidth = 1.5;
+                let dashArray = '3,3';
+                let isActiveLine = false;
+                let lineOpacity = 1.0;
+
+                if (activeHoverNode) {
+                    // 호버 중일 때 비연관 선은 완전히 아웃포커스 처리
+                    const isRelated = activeRelations.some(r => r.parent === prereqCode && r.child === rule.target);
+                    if (!isRelated) {
+                        lineOpacity = 0.02; /* 거의 안보이게 처리하여 노이즈 차단 */
+                    } else {
+                        isActiveLine = true;
+                        const isPrereqChain = activePrereqCodes.has(prereqCode) || prereqCode === activeHoverNode;
+                        strokeColor = isPrereqChain ? 'var(--khu-gold)' : 'var(--accent-blue)';
+                        strokeWidth = 2.5;
+                        dashArray = 'none';
+                    }
+                } else {
+                    // 평상시: 선택된 분야 트랙일 경우 아름답게 실시간 하이라이팅
+                    const isTrackLine = currentTrack !== "all" && trackCourses.includes(prereqCode) && trackCourses.includes(rule.target);
+                    if (isTrackLine) {
+                        strokeColor = 'var(--khu-burgundy-light)';
+                        strokeWidth = 2.2;
+                        dashArray = 'none';
+                        lineOpacity = 0.85;
+                    } else {
+                        // 전체보기 모드이거나 비활성 상태일 때는 매우 얇고 투명한 라인으로 처리하여 노이즈를 완벽 차단
+                        lineOpacity = currentTrack === "all" ? 0.35 : 0.04;
+                        strokeColor = bothCompleted ? 'var(--khu-burgundy-light)' : 'rgba(0, 0, 0, 0.05)';
+                        strokeWidth = bothCompleted ? 1.5 : 1.0;
+                        dashArray = bothCompleted ? 'none' : '3,3';
+                    }
+                }
+
+
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('stroke', strokeColor);
+                path.setAttribute('stroke-width', strokeWidth);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('marker-end', 'url(#arrow)');
+                path.style.opacity = lineOpacity;
+                path.style.transition = 'opacity 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease';
+                
+                if (isActiveLine) {
+                    path.classList.add('active-connection');
+                } else if (dashArray !== 'none') {
+                    path.setAttribute('stroke-dasharray', dashArray);
+                }
+                svg.appendChild(path);
+            });
+        });
+    }
+
+    // 지능형 연쇄 호버 이벤트 핸들러 바인딩 (다단계 재귀 연쇄 및 동적 뱃지 렌더링)
+    function bindCardHoverEvents() {
+        document.querySelectorAll('.timeline-course-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                const code = card.dataset.code;
+                activeHoverNode = code;
+
+                // 재귀적 선수/후수 체인 획득
+                const prereqRelations = getRecursivePrereqs(code);
+                const followupRelations = getRecursiveFollowups(code);
+
+                const prereqCodes = new Set(prereqRelations.map(r => r.parent));
+                const followupCodes = new Set(followupRelations.map(r => r.child));
+
+                // 모든 노드 상태 스타일링 및 관계 뱃지 텍스트 렌더링
+                document.querySelectorAll('.timeline-course-card').forEach(otherCard => {
+                    const otherCode = otherCard.dataset.code;
+                    const badge = otherCard.querySelector('.relation-badge');
+
+                    if (otherCode === code) {
+                        otherCard.classList.add('highlight-focus');
+                        if (badge) badge.innerText = "선택 과목";
+                    } else if (prereqCodes.has(otherCode)) {
+                        otherCard.classList.add('highlight-prereq');
+                        if (badge) badge.innerText = "선수 교과";
+                    } else if (followupCodes.has(otherCode)) {
+                        otherCard.classList.add('highlight-followup');
+                        if (badge) badge.innerText = "후수 교과";
+                    } else {
+                        otherCard.classList.add('fade-out-node');
+                    }
+                });
+
+                // 관계선 실시간 재배치 및 물결 애니메이션 가동
+                drawConnections();
+            });
+
+            card.addEventListener('mouseleave', () => {
+                activeHoverNode = null;
+
+                // 모든 노드 정상 복구
+                document.querySelectorAll('.timeline-course-card').forEach(otherCard => {
+                    otherCard.classList.remove('highlight-focus');
+                    otherCard.classList.remove('highlight-prereq');
+                    otherCard.classList.remove('highlight-followup');
+                    otherCard.classList.remove('fade-out-node');
+                    
+                    const badge = otherCard.querySelector('.relation-badge');
+                    if (badge) badge.innerText = "";
+                });
+
+                // 관계선 정상 복구
+                drawConnections();
+            });
+        });
+    }
+
+    // 의존성 실시간 검증 (Prerequisite Dependency Validation)
+    function validateDependencies() {
+        const alertPanel = document.getElementById('alert-panel');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMsg = document.getElementById('alert-msg');
+        
+        let errors = [];
+
+        prerequisites.forEach(rule => {
+            // 학생이 후수 교과를 선택했는데 선수 필수 교과가 빠진 경우 감지
+            if (completedCourses.has(rule.target)) {
+                const missingPrereqs = rule.prereqs.filter(p => !completedCourses.has(p));
+                if (missingPrereqs.length > 0) {
+                    const targetName = courses.find(c => c.code === rule.target).name;
+                    const missingNames = missingPrereqs.map(p => courses.find(c => c.code === p).name).join(', ');
+                    errors.push(`'${targetName}'을 수강하기 전에 선수 과목인 '${missingNames}'을 반드시 먼저 이수해야 합니다.`);
+                }
+            }
+        });
+
+        if (errors.length > 0) {
+            alertTitle.innerHTML = `⚠️ [학업 이수 체계 오류 감지 - 총 ${errors.length}건]`;
+            alertMsg.innerHTML = errors[0]; // 대표 에러 하나만 출력
+            alertPanel.style.display = 'block';
+        } else {
+            alertPanel.style.display = 'none';
+        }
+    }
+
+    // 5. Canvas Radar Chart 직접 구현 (외부 라이브러리 프리)
+    let radarContext = null;
+    function initRadarChart() {
+        const canvas = document.getElementById('radarChart');
+        radarContext = canvas.getContext('2d');
+        updateRadarChart();
+    }
+
+    function updateRadarChart() {
+        if (!radarContext) return;
+        
+        const canvas = document.getElementById('radarChart');
+        const ctx = radarContext;
+        
+        // 클리어
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 95;
+
+        // 역량 카테고리 정의
+        const categories = [
+            { name: "회로설계 (CSY)", track: "CSY" },
+            { name: "반도체소자 (SW)", track: "SW" },
+            { name: "임베디드/SW (COMP)", track: "COMP" },
+            { name: "통신/신호 (CS)", track: "CS" }
+        ];
+
+        // 각 카테고리별 이수 평점/성취도 계산
+        let scores = [10, 10, 10, 10]; // 기본 최소값 10%
+        
+        categories.forEach((cat, idx) => {
+            const catCourses = courses.filter(c => c.track === cat.track);
+            const completedCatCourses = catCourses.filter(c => completedCourses.has(c.code));
+            
+            if (catCourses.length > 0) {
+                const ratio = completedCatCourses.length / catCourses.length;
+                scores[idx] = Math.max(10, Math.round(ratio * 100)); // 10% ~ 100% 범위
+            }
+        });
+
+        // 뒷배경 방사형 가이드라인 그리기 (밝은 모드에 맞게 어두운 연회색선으로 튜닝)
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.lineWidth = 1;
+        
+        // 4단계 가이드 링
+        for (let r = 1; r <= 4; r++) {
+            const currentR = radius * (r / 4);
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                const angle = (Math.PI / 2) * i - Math.PI / 4; // 45도 회전시켜서 그리기
+                const x = centerX + currentR * Math.cos(angle);
+                const y = centerY + currentR * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        // 중심선
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI / 2) * i - Math.PI / 4;
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + radius * Math.cos(angle), centerY + radius * Math.sin(angle));
+        }
+        ctx.stroke();
+
+        // 텍스트 라벨 배치 (선명한 다크 차콜로 드로잉)
+        ctx.fillStyle = 'hsl(220, 25%, 12%)';
+        ctx.font = 'bold 11px Noto Sans KR';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        categories.forEach((cat, i) => {
+            const angle = (Math.PI / 2) * i - Math.PI / 4;
+            const x = centerX + (radius + 24) * Math.cos(angle);
+            const y = centerY + (radius + 15) * Math.sin(angle);
+            ctx.fillText(cat.name, x, y);
+        });
+
+        // 실제 획득한 성취도 폴리곤 그리기
+        ctx.fillStyle = 'hsla(343, 66%, 33%, 0.18)'; /* 밝은 버건디 반투명 채우기 */
+        ctx.strokeStyle = 'var(--khu-burgundy-light)'; /* 선명한 버건디 테두리 */
+        ctx.lineWidth = 2.5;
+
+        ctx.beginPath();
+        categories.forEach((cat, i) => {
+            const angle = (Math.PI / 2) * i - Math.PI / 4;
+            const currentR = radius * (scores[i] / 100);
+            const x = centerX + currentR * Math.cos(angle);
+            const y = centerY + currentR * Math.sin(angle);
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 데이터 밸류 노드 포인트 그리기
+        categories.forEach((cat, i) => {
+            const angle = (Math.PI / 2) * i - Math.PI / 4;
+            const currentR = radius * (scores[i] / 100);
+            const x = centerX + currentR * Math.cos(angle);
+            const y = centerY + currentR * Math.sin(angle);
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--khu-gold)';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+        });
+
+        // 학점 통계 수치 실시간 업데이트
+        let totalCredits = 0;
+        completedCourses.forEach(code => {
+            const c = courses.find(item => item.code === code);
+            if (c) totalCredits += c.credits;
+        });
+
+        document.getElementById('stat-completed-credits').innerHTML = `${totalCredits}<span>학점</span>`;
+        const rate = Math.min(100, Math.round((totalCredits / 130) * 100));
+        document.getElementById('stat-completion-rate').innerHTML = `${rate}<span>%</span>`;
+    }
+
+    // 6. 이벤트 핸들러 바인딩
+    function setupEventListeners() {
+        // 체크박스 클릭 핸들러
+        document.getElementById('curriculum-selector-container').addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                const code = e.target.value;
+                const wrapper = e.target.closest('.course-checkbox-item');
+
+                if (e.target.checked) {
+                    completedCourses.add(code);
+                    if (wrapper) wrapper.classList.add('checked');
+                } else {
+                    completedCourses.delete(code);
+                    if (wrapper) wrapper.classList.remove('checked');
+                }
+
+                // 전체 시각화 및 검증 동시 갱신
+                validateDependencies();
+                updateTrackActiveCourses();
+                updateRadarChart();
+            }
+        });
+
+        // 분야 트랙 클릭 핸들러
+        document.querySelectorAll('.track-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTrack = btn.dataset.track;
+                updateTrackActiveCourses();
+            });
+        });
+
+        // 프리셋 로드: 반도체 대기업 합격 선배Presest
+        document.getElementById('preset-sem-senior').addEventListener('click', () => {
+            const preset = ["AMTH1009", "APHY1002", "APHY1003", "EE201", "EE202", "EE203", "EE207", "EE321", "EE328", "EE206", "EE365", "EE422", "EE497"];
+            loadPreset(preset, "semiconductor");
+        });
+
+        // 프리셋 로드: 자율주행 선배 Preset
+        document.getElementById('preset-ai-senior').addEventListener('click', () => {
+            const preset = ["AMTH1009", "AMTH1004", "SWCON104", "EE213", "EE210", "EE209", "EE211", "EE342", "EE364", "EE371", "EE497"];
+            loadPreset(preset, "ai");
+        });
+
+        // 프리셋 리셋
+        document.getElementById('preset-reset').addEventListener('click', () => {
+            completedCourses.clear();
+            document.querySelectorAll('.course-checkbox-item input[type="checkbox"]').forEach(chk => {
+                chk.checked = false;
+                chk.closest('.course-checkbox-item').classList.remove('checked');
+            });
+            validateDependencies();
+            updateTrackActiveCourses();
+            updateRadarChart();
+        });
+
+        // 윈도우 리사이즈 시 SVG 연결선 다시 그리기
+        window.addEventListener('resize', drawConnections);
+    }
+
+    // 프리셋 일괄 수강 세팅 로직
+    function loadPreset(presetCodes, trackName) {
+        completedCourses.clear();
+        
+        // 체크박스 일체 제어
+        document.querySelectorAll('.course-checkbox-item input[type="checkbox"]').forEach(chk => {
+            const code = chk.value;
+            const item = chk.closest('.course-checkbox-item');
+            
+            if (presetCodes.includes(code)) {
+                chk.checked = true;
+                completedCourses.add(code);
+                if (item) item.classList.add('checked');
+            } else {
+                chk.checked = false;
+                if (item) item.classList.remove('checked');
+            }
+        });
+
+        currentTrack = trackName;
+        validateDependencies();
+        updateTrackActiveCourses();
+        updateRadarChart();
+    }
+</script>
+
+</body>
+</html>

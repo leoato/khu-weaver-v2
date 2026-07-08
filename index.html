@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KHU-Weaver | 경희대학교 전자공학과 지능형 전공 설계 플랫폼</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+    <!-- 헤더 영역 -->
+    <header>
+        <div class="logo-section">
+            <div class="logo-emblem">KW</div>
+            <div class="logo-text">
+                <h1>KHU-Weaver</h1>
+                <p>경희대학교 전자공학과 지능형 전공 설계 및 이수체계 로드맵</p>
+            </div>
+        </div>
+        <div class="header-meta">
+            <button id="profile-chip" class="profile-chip" style="display: none;">
+                <span id="profile-chip-avatar" class="profile-chip-avatar">학</span>
+                <span id="profile-chip-text"></span>
+            </button>
+
+            <span class="badge-academic" id="academic-year-tag">2025학년도 교육과정 기준</span>
+        </div>
+        <div class="header-actions">
+            <button id="btn-open-gpa-header" class="header-btn" type="button">성적 계산기</button>
+            <button id="btn-share-build" class="header-btn header-btn-primary" type="button">내 빌드 공유</button>
+        </div>
+    </header>
+
+    <!-- 실시간 선수과목 의존성 경고 배너 패널 -->
+    <div id="alert-panel">
+        <div class="alert-card">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <h4 id="alert-title">[이수 체계 오류 감지]</h4>
+                <p id="alert-msg">선수 필수 과목이 누락되었습니다. 대체 이수 경로를 확인하십시오.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 대시보드 그리드 -->
+    <div class="main-grid">
+        
+        <!-- 단일 열: 맞춤형 커리어 로드맵 (사이드바 제거 → 로드맵 전폭. 분석 카드는 '내 분석' 탭으로 이동) -->
+        <div class="workspace-panel">
+
+            <!-- 0. 페이지 제목 + 상태 범례 (순수 안내용, 시안 계승) -->
+            <div class="roadmap-heading">
+                <h2 class="roadmap-title" id="view-title">나의 전공 로드맵</h2>
+                <p class="roadmap-sub" id="view-sub">노드를 클릭/호버하면 선후수 관계와 상세 정보를 확인할 수 있습니다.</p>
+                <div class="status-legend" id="roadmap-legend">
+                    <span class="status-legend-item"><i class="status-dot status-done"></i>이수 완료</span>
+                    <span class="status-legend-item"><i class="status-dot status-avail"></i>수강 가능</span>
+                    <span class="status-legend-item"><i class="status-dot status-locked"></i>선수과목 미충족</span>
+                </div>
+            </div>
+
+            <!-- 1. 5대 전문 트랙 선택 탭 -->
+            <div class="track-selectors">
+                <button class="track-btn active" data-track="all">
+                    <span>전체 이수체계</span>
+                    <span class="en">All Curriculum</span>
+                </button>
+                <button class="track-btn" data-track="semiconductor">
+                    <span>반도체 소자 및 공정</span>
+                    <span class="en">Semiconductor</span>
+                </button>
+                <button class="track-btn" data-track="embedded">
+                    <span>임베디드 및 IoT</span>
+                    <span class="en">Embedded IoT</span>
+                </button>
+                <button class="track-btn" data-track="ai">
+                    <span>인공지능 및 신호처리</span>
+                    <span class="en">AI & Signal</span>
+                </button>
+                <button class="track-btn" data-track="telecom">
+                    <span>초고주파 및 차세대통신</span>
+                    <span class="en">RF & Telecom</span>
+                </button>
+                <button class="track-btn" data-track="circuit">
+                    <span>시스템 회로 설계</span>
+                    <span class="en">Circuit Design</span>
+                </button>
+                <button class="track-btn view-tab" data-view="trends">
+                    <span>진로 트렌드</span>
+                    <span class="en">Career Trends</span>
+                </button>
+                <button class="track-btn view-tab" data-view="analysis">
+                    <span>내 분석</span>
+                    <span class="en">My Analysis</span>
+                </button>
+            </div>
+
+            <!-- ROADMAP 뷰: 기이수입력 버튼 + 프리셋 + 타임라인 -->
+            <div id="roadmap-view" class="view-panel">
+
+            <!-- 로드맵 좌상단: 기이수 교과목 입력 진입 버튼 (온보딩 3/3 입력을 모달로 재사용) -->
+            <div class="roadmap-toolbar">
+                <button id="btn-open-history" class="btn-history" type="button">＋ 기이수 교과목 입력</button>
+            </div>
+
+            <!-- 2. 프리셋 / 선배 벤치마킹 연계 -->
+            <div class="presets-row">
+                <div class="presets-title">
+                    <span>💡 우수 졸업 포트폴리오 벤치마킹</span>
+                </div>
+                <div class="presets-buttons">
+                    <button class="preset-btn" id="preset-sem-senior">반도체 대기업 합격 선배 빌드</button>
+                    <button class="preset-btn" id="preset-ai-senior">자율주행 R&D 대학원 선배 빌드</button>
+                    <button class="preset-btn" id="preset-reset">초기화</button>
+                </div>
+            </div>
+
+            <!-- 3. 실시간 로드맵 타임라인 시각화 맵 -->
+            <div class="roadmap-timeline-wrapper">
+                <div class="timeline-years-grid" id="roadmap-timeline-grid">
+                    <!-- 학년별 4개의 컬럼이 위치하며, 과목 카드와 연결선 SVG가 배치됩니다 -->
+                    <div class="timeline-year-col" data-year="1">
+                        <div class="year-col-title">1st Year <span class="ko">1학년 기초공학</span></div>
+                        <div class="year-courses-list" id="col-year-1"></div>
+                    </div>
+                    <div class="timeline-year-col" data-year="2">
+                        <div class="year-col-title">2nd Year <span class="ko">2학년 전공핵심</span></div>
+                        <div class="year-courses-list" id="col-year-2"></div>
+                    </div>
+                    <div class="timeline-year-col" data-year="3">
+                        <div class="year-col-title">3rd Year <span class="ko">3학년 심화공학</span></div>
+                        <div class="year-courses-list" id="col-year-3"></div>
+                    </div>
+                    <div class="timeline-year-col" data-year="4">
+                        <div class="year-col-title">4th Year <span class="ko">4학년 실무융합</span></div>
+                        <div class="year-courses-list" id="col-year-4"></div>
+                    </div>
+                </div>
+                <!-- 연결선 처리를 위한 백그라운드 SVG -->
+                <svg class="svg-connections-canvas" id="svg-canvas">
+                    <defs>
+                        <!-- 선후수 화살표 머리 마커 정의 -->
+                        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="context-stroke" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            </div><!-- /#roadmap-view -->
+
+            <!-- 진로 트렌드 뷰 (KW_TRENDS 데이터로 세로 막대그래프 + 출처 + 분석) -->
+            <div id="trends-view" class="view-panel" style="display:none;">
+                <div class="card trends-card">
+                    <div id="trends-body">
+                        <!-- app.js renderTrends()가 js/data/TRENDS.js로 채웁니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내 분석 뷰 (사이드바에서 이동: 졸업 이수율 · 전공 평점 · 역량 레이더) -->
+            <div id="analysis-view" class="view-panel" style="display:none;">
+                <div class="analysis-grid">
+
+                    <!-- 1. 졸업 이수율 -->
+                    <div class="card">
+                        <h3 class="card-title">
+                            <span>졸업 이수율</span>
+                            <span class="badge-academic" style="font-size: 10px; color: var(--accent-green); border-color: rgba(76, 175, 80, 0.2);">정량화 분석</span>
+                        </h3>
+                        <div class="credit-dashboard" style="grid-template-columns: repeat(2, 1fr);">
+                            <div class="credit-stat-card">
+                                <span class="label">기취득 학점</span>
+                                <span class="value" id="stat-completed-credits">0<span>학점</span></span>
+                            </div>
+                            <div class="credit-stat-card">
+                                <span class="label">졸업 이수율</span>
+                                <span class="value" id="stat-completion-rate">0<span>%</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 전공 평점 KPI (전공 과목 성적만 반영 · 전체평점/교양은 인포21 영역) -->
+                    <div class="card">
+                        <h3 class="card-title">
+                            <span>전공 평점</span>
+                            <button id="btn-open-gpa" class="preset-btn" style="padding: 4px 10px; font-size: 11px; background: var(--khu-burgundy); color: white; border: none;">성적 입력 · 상세</button>
+                        </h3>
+                        <div class="credit-dashboard" style="grid-template-columns: repeat(2, 1fr);">
+                            <div class="credit-stat-card">
+                                <span class="label">전공 평점 (4.3)</span>
+                                <span class="value"><b id="stat-major-gpa" style="font-weight: 700;">0.00</b><span>/4.3</span></span>
+                            </div>
+                            <div class="credit-stat-card">
+                                <span class="label">반영 과목</span>
+                                <span class="value"><b id="stat-major-graded" style="font-weight: 700;">0</b><span>과목</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 역량 레이더 -->
+                    <div class="card">
+                        <h3 class="card-title">
+                            <span>역량 레이더</span>
+                        </h3>
+                        <div class="chart-container">
+                            <canvas id="radarChart" width="380" height="280"></canvas>
+                            <div class="chart-legend">
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--track-csy);"></span>회로/시스템 설계 (CSY)</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--track-sw);"></span>반도체/공정설계 (SW)</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--track-comp);"></span>임베디드/SW융합 (COMP)</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--track-cs);"></span>통신/신호처리 (CS)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div><!-- /.workspace-panel -->
+    </div><!-- /.main-grid -->
+
+    <!-- app.js 로직 보존용 은닉 컨테이너: 기이수 체크 UI는 모달(온보딩 3/3)로 이동했으나
+         initCurriculumSelector/성적 셀렉트 동기화 로직이 이 컨테이너를 참조하므로 DOM에는 유지(비표시) -->
+    <div id="legacy-curriculum-holder" style="display:none;" aria-hidden="true">
+        <div class="curriculum-selector" id="curriculum-selector-container"></div>
+    </div>
+
+    <!-- 페이지 최하단: 설계 배경 및 큐레이션 기작 (1줄 요약으로 축소·이동) -->
+    <div class="design-footer-note">
+        <span class="design-footer-label">KHU-Weaver 설계 배경 및 큐레이션 기작</span>
+        <span class="design-footer-desc">OP.GG의 데이터 큐레이션 철학을 학사 설계에 이식한 지능형 전공 로드맵 플랫폼</span>
+    </div>
+</div>
+
+    <!-- ===== 온보딩 — 랜딩 + 저마찰 3단계 위저드 (UX_FLOW.md 기준) ===== -->
+    <div class="onboarding-overlay" id="onboarding-overlay">
+        <div class="onboarding-card" id="ob-card">
+
+            <!-- STEP 0: 랜딩 -->
+            <div class="onboarding-screen ob-landing active" id="ob-landing">
+                <div class="ob-landing-logo">KW</div>
+                <h2 class="ob-landing-title">KHU-Weaver</h2>
+                <p class="ob-landing-copy">전공 과목을 엮어, 나만의 졸업 로드맵을 완성하세요.</p>
+                <button class="onboarding-submit" id="ob-start" type="button">시작하기</button>
+                <p class="onboarding-footnote">입력 정보는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+            </div>
+
+            <!-- 위저드 (STEP 1~3) -->
+            <div class="ob-wizard" id="ob-wizard">
+                <div class="onboarding-brand ob-wizard-brand">
+                    <div class="onboarding-logo">KW</div>
+                    <div>
+                        <h2 class="onboarding-title" id="ob-title">먼저, 학과를 선택하세요</h2>
+                        <p class="onboarding-tagline" id="ob-sub">선택한 학과·학번의 교육과정으로 로드맵이 구성됩니다</p>
+                    </div>
+                </div>
+
+                <div class="onboarding-steps">
+                    <div class="onboarding-step-bar on" id="ob-step-1"></div>
+                    <div class="onboarding-step-bar" id="ob-step-2"></div>
+                    <div class="onboarding-step-bar" id="ob-step-3"></div>
+                </div>
+                <div class="ob-step-count" id="ob-step-count">1 / 3</div>
+
+                <!-- STEP 1: 학과 선택 -->
+                <div class="onboarding-screen active" id="ob-screen-1">
+                    <div class="onboarding-field">
+                        <label class="onboarding-label">학과 선택</label>
+                        <div class="onboarding-depts" id="ob-dept-list">
+                            <!-- onboarding.js가 학과 카드를 채웁니다 -->
+                        </div>
+                        <p class="onboarding-hint" id="ob-dept-hint"></p>
+                    </div>
+                    <div class="onboarding-nav">
+                        <button class="onboarding-back-btn" id="ob-back-1" type="button">← 처음</button>
+                        <div class="onboarding-nav-spacer"></div>
+                        <button class="onboarding-submit onboarding-nav-btn" id="ob-next-1" type="button">다음</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: 학번 + 이름 -->
+                <div class="onboarding-screen" id="ob-screen-2">
+                    <div class="onboarding-field">
+                        <label class="onboarding-label">입학 학번</label>
+                        <div class="onboarding-years" id="ob-year-grid">
+                            <!-- onboarding.js가 학번 칩을 채웁니다 -->
+                        </div>
+                    </div>
+
+                    <div class="onboarding-field">
+                        <label class="onboarding-label" for="ob-name">이름 <span class="onboarding-optional">(선택 · 헤더 표시용)</span></label>
+                        <input class="onboarding-input" id="ob-name" type="text" placeholder="이름 (선택)" maxlength="20" autocomplete="off">
+                    </div>
+
+                    <div class="onboarding-preview" id="ob-preview">
+                        <div class="onboarding-preview-av" id="ob-preview-av">학</div>
+                        <div>
+                            <div class="onboarding-preview-title" id="ob-preview-title"></div>
+                            <div class="onboarding-preview-sub">이 프로필로 로드맵·성적 계산기가 구성됩니다</div>
+                        </div>
+                    </div>
+
+                    <div class="onboarding-nav">
+                        <button class="onboarding-back-btn" id="ob-back-2" type="button">← 이전</button>
+                        <div class="onboarding-nav-spacer"></div>
+                        <button class="onboarding-submit onboarding-nav-btn" id="ob-next-2" type="button">다음</button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: 이수 이력 (A 스크린샷 / B 직접선택 / C 없음) -->
+                <div class="onboarding-screen" id="ob-screen-3">
+                    <!-- 3-1. 방법 선택 카드 -->
+                    <div id="ob-hist-choose">
+                        <div class="onboarding-field">
+                            <label class="onboarding-label">지금까지 들은 과목을 알려주세요</label>
+                            <div class="ob-hist-cards" id="ob-hist-cards">
+                                <button class="ob-hist-card" id="ob-hist-a" type="button">
+                                    <span class="ob-hist-ic">📷</span>
+                                    <span class="ob-hist-body">
+                                        <span class="ob-hist-t">에타 스크린샷으로 한 번에 <span class="ob-hist-badge">추천</span></span>
+                                        <span class="ob-hist-d">캡쳐 몇 장이면 과목·성적까지 자동 입력</span>
+                                    </span>
+                                </button>
+                                <button class="ob-hist-card" id="ob-hist-b" type="button">
+                                    <span class="ob-hist-ic">✅</span>
+                                    <span class="ob-hist-body">
+                                        <span class="ob-hist-t">직접 선택하기</span>
+                                        <span class="ob-hist-d">학년별 과목표에서 들은 과목을 체크</span>
+                                    </span>
+                                </button>
+                                <button class="ob-hist-card" id="ob-hist-c" type="button">
+                                    <span class="ob-hist-ic">🌱</span>
+                                    <span class="ob-hist-body">
+                                        <span class="ob-hist-t">아직 수강한 과목이 없어요</span>
+                                        <span class="ob-hist-d">신입생용 · 바로 로드맵으로</span>
+                                    </span>
+                                </button>
+                            </div>
+                            <p class="onboarding-hint">지금 건너뛰어도 대시보드에서 언제든 채울 수 있어요.</p>
+                        </div>
+                        <div class="onboarding-nav">
+                            <button class="onboarding-back-btn" id="ob-back-3" type="button">← 이전</button>
+                            <div class="onboarding-nav-spacer"></div>
+                        </div>
+                    </div>
+
+                    <!-- 3-2. A안 스크린샷 (키 없으면 준비 중 → B 폴백 / 키 있으면 OCR 플로우) -->
+                    <div class="ob-shot-panel" id="ob-shot-panel">
+                        <!-- 키 미설정: 준비 중 안내 + 직접 선택 폴백 -->
+                        <div id="ob-ocr-disabled">
+                            <div class="ob-shot-drop" id="ob-shot-drop">
+                                <div class="ob-shot-ic">📷</div>
+                                <div class="ob-shot-t">에타 스크린샷 자동 인식</div>
+                                <div class="ob-shot-d">캡쳐 1~8장을 올리면 과목·성적을 한 번에 채워요. 이름·학번은 가려도 됩니다.</div>
+                                <span class="ob-shot-soon">기능 준비 중</span>
+                            </div>
+                            <p class="ob-shot-fallback">스크린샷 인식은 아직 준비 중이에요. 대신 <b>직접 선택하기</b>로 빠르게 체크할 수 있어요.</p>
+                            <div class="onboarding-nav">
+                                <button class="onboarding-back-btn" id="ob-shot-back" type="button">← 방법 선택</button>
+                                <div class="onboarding-nav-spacer"></div>
+                                <button class="onboarding-submit onboarding-nav-btn" id="ob-shot-tob" type="button">직접 선택으로 이동</button>
+                            </div>
+                        </div>
+                        <!-- 키 설정됨: ocr.js가 업로드→직조→결과표를 렌더 -->
+                        <div id="ob-ocr-root" style="display:none;"></div>
+                    </div>
+
+                    <!-- 3-3. B안 학년별 과목 체크 -->
+                    <div class="ob-b-panel" id="ob-b-panel">
+                        <div class="ob-b-head">
+                            <button class="onboarding-back-btn" id="ob-b-back" type="button">← 방법 선택</button>
+                            <span class="ob-b-count" id="ob-b-count">0과목 선택</span>
+                        </div>
+                        <p class="ob-b-note" id="ob-b-note"></p>
+                        <div class="ob-b-list" id="ob-b-list"></div>
+                        <button class="onboarding-submit" id="ob-b-apply" type="button">이 과목들로 로드맵 시작</button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="onboarding-footnote ob-wizard-foot" id="ob-wizard-foot">입력 정보는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+        </div>
+    </div>
+
+    <!-- ===== 코치마크 (첫 완료 시 1회, 3개) ===== -->
+    <div class="coach-overlay" id="coach-overlay">
+        <div class="coach-ring" id="coach-ring"></div>
+        <div class="coach-tip" id="coach-tip">
+            <div class="coach-step" id="coach-step">1 / 3</div>
+            <div class="coach-tip-title" id="coach-title"></div>
+            <div class="coach-tip-body" id="coach-body"></div>
+            <label class="coach-dismiss"><input type="checkbox" id="coach-dismiss-chk" checked> 다시 보지 않기</label>
+            <div class="coach-tip-nav">
+                <button class="onboarding-back-btn" id="coach-skip" type="button">건너뛰기</button>
+                <button class="onboarding-submit onboarding-nav-btn" id="coach-next" type="button">다음</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 데이터: 학과/학번별 교육과정 (window 전역으로 노출) -->
+    <!-- config.js: 클라이언트 설정(API 키). 반드시 다른 스크립트보다 먼저 로드. -->
+    <script src="js/config.js"></script>
+
+    <!-- 학번별 교육과정 데이터 파일. 새 학번 데이터가 준비되면 여기에 한 줄씩 추가. -->
+    <script src="js/data/EE_2026.js"></script>
+    <script src="js/data/EE_2025.js"></script>
+    <script src="js/data/EE_2024.js"></script>
+    <script src="js/data/EE_2023.js"></script>
+    <script src="js/data/EE_2022.js"></script>
+    <script src="js/data/EE_2021.js"></script>
+    <script src="js/data/EE_2020.js"></script>
+    <script src="js/data/TRENDS.js"></script>
+
+    <!-- registry.js: 학과/학번 목록 + getCurriculum (데이터 파일들 다음, app.js 이전에 로드) -->
+    <script src="js/registry.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/ocr.js"></script>
+    <script src="js/onboarding.js"></script>
+
+    <div class="onboarding-overlay" id="gpa-overlay">
+        <div class="onboarding-card gpa-modal-card gpa-summary-card">
+            <div class="onboarding-brand" style="justify-content: space-between; margin-bottom: 18px;">
+                <div>
+                    <h2 class="onboarding-title">전공 평점</h2>
+                    <p class="onboarding-tagline">이수 체크한 전공 과목에 성적을 입력하면 전공 평점이 계산됩니다. (전체 평점·교양은 인포21 영역)</p>
+                </div>
+                <button id="btn-close-gpa" class="close-btn">✕</button>
+            </div>
+
+            <div class="gpa-global-stats">
+                <div class="gpa-stat-box">
+                    <span class="gpa-stat-label">전공 평점</span>
+                    <span class="gpa-stat-val" id="gpa-major-val">0.00</span><span class="gpa-stat-max">/4.3</span>
+                </div>
+                <div class="gpa-stat-box">
+                    <span class="gpa-stat-label">반영 과목</span>
+                    <span class="gpa-stat-val" id="gpa-major-count">0</span><span class="gpa-stat-max">과목</span>
+                </div>
+                <div class="gpa-stat-box">
+                    <span class="gpa-stat-label">반영 학점</span>
+                    <span class="gpa-stat-val" id="gpa-major-credits">0</span><span class="gpa-stat-max">학점</span>
+                </div>
+            </div>
+
+            <p class="gpa-summary-note">성적을 선택하지 않은 과목과 P/NP 과목은 평점 계산에서 제외됩니다.</p>
+            <div class="gpa-course-list" id="gpa-course-list"></div>
+
+            <div class="gpa-modal-footer">
+                <button class="onboarding-submit" id="btn-gpa-done" type="button">완료</button>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>
