@@ -972,6 +972,13 @@ body.onboarding-open { overflow: hidden; }
     max-width: min(1180px, 92vw); width: 100%;
     margin: max(2vh, 14px) auto; padding: 26px 28px 22px;
 }
+.onboarding-overlay:has(.ocr-weave) {
+    align-items: center;
+}
+.onboarding-overlay:has(.ocr-weave) .onboarding-card.ob-card-wide {
+    max-width: min(520px, 92vw);
+    margin: auto;
+}
 .ob-b-panel { display: none; }
 .ob-b-panel.active { display: block; }
 .ob-b-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
