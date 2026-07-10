@@ -3,6 +3,7 @@
     let currentTrack = "all";
     let currentView = "roadmap"; // roadmap | trends | analysis (F-3 뷰 전환)
     let activeHoverNode = null;
+    let mobileRelationCode = null;
 
     // 로컬 스토리지 제어 함수
     const COMPLETED_STORAGE_KEY = 'khu-weaver-completed';
@@ -158,7 +159,142 @@
 
     // 타임라인 내에 과목 카드 동적 로드 (학년 레인에 컴팩트 카드를 자유배치 — 4개 학년이 한 화면에 들어오도록
     // 고정 6슬롯 그리드 대신, 트랙 우선순위로 정렬한 뒤 순서대로 쌓는 방식으로 전환)
+    function isMobileRoadmap() {
+        return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function getCourseByCode(code) {
+        return courses.find(c => c.code === code);
+    }
+
+    function uniqueRelationCodes(relations, key) {
+        return Array.from(new Set(relations.map(r => r[key]).filter(Boolean)));
+    }
+
+    function relationChipHtml(code, type) {
+        const course = getCourseByCode(code);
+        const label = course ? course.name : code;
+        return `<button class="mrb-chip ${type}" type="button" data-code="${code}">${label}</button>`;
+    }
+
+    function relationGroupHtml(label, codes, type) {
+        const content = codes.length
+            ? codes.map(code => relationChipHtml(code, type)).join('')
+            : '<span class="mrb-empty">연결된 과목이 없어요</span>';
+        return `
+            <section class="mrb-group ${type}">
+                <span class="mrb-label">${label}</span>
+                <div class="mrb-chips">${content}</div>
+            </section>
+        `;
+    }
+
+    function clearMobileRelationPanel() {
+        mobileRelationCode = null;
+        document.querySelectorAll('.mobile-relation-panel, .mobile-relation-board').forEach(panel => panel.remove());
+        document.querySelectorAll('.timeline-course-card.mobile-relation-open, .timeline-course-card.mobile-relation-dim, .timeline-course-card.mobile-related-prereq, .timeline-course-card.mobile-related-followup').forEach(card => {
+            card.classList.remove('mobile-relation-open');
+            card.classList.remove('mobile-relation-dim');
+            card.classList.remove('mobile-related-prereq');
+            card.classList.remove('mobile-related-followup');
+        });
+    }
+
+    function applyMobileRelationClasses(code, prereqCodes, followupCodes) {
+        const prereqSet = new Set(prereqCodes);
+        const followupSet = new Set(followupCodes);
+
+        document.querySelectorAll('.timeline-course-card').forEach(otherCard => {
+            const otherCode = otherCard.dataset.code;
+            otherCard.classList.remove('mobile-relation-open', 'mobile-relation-dim', 'mobile-related-prereq', 'mobile-related-followup');
+
+            if (otherCode === code) {
+                otherCard.classList.add('mobile-relation-open');
+            } else if (prereqSet.has(otherCode)) {
+                otherCard.classList.add('mobile-related-prereq');
+            } else if (followupSet.has(otherCode)) {
+                otherCard.classList.add('mobile-related-followup');
+            } else {
+                otherCard.classList.add('mobile-relation-dim');
+            }
+        });
+    }
+
+    function jumpToRelationCourse(code) {
+        const target = document.getElementById(`t-card-${code}`);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.remove('mobile-jump-highlight');
+        void target.offsetWidth;
+        target.classList.add('mobile-jump-highlight');
+        window.setTimeout(() => target.classList.remove('mobile-jump-highlight'), 1200);
+    }
+
+    function toggleMobileRelationPanel(card) {
+        const code = card.dataset.code;
+        if (!code) return;
+
+        if (mobileRelationCode === code) {
+            clearMobileRelationPanel();
+            return;
+        }
+
+        const prereqCodes = uniqueRelationCodes(getRecursivePrereqs(code), 'parent');
+        const followupCodes = uniqueRelationCodes(getRecursiveFollowups(code), 'child');
+        const hasAnyRelation = prereqCodes.length > 0 || followupCodes.length > 0;
+        const selected = getCourseByCode(code);
+        const selectedName = selected ? selected.name : code;
+        const selectedMeta = selected ? `${selected.code} · ${selected.credits}학점 · ${selected.track}` : code;
+
+        clearMobileRelationPanel();
+        mobileRelationCode = code;
+        applyMobileRelationClasses(code, prereqCodes, followupCodes);
+
+        const panel = document.createElement('div');
+        panel.className = 'mobile-relation-board';
+        panel.dataset.forCode = code;
+        panel.innerHTML = `
+            <div class="mrb-head">
+                <span>관계 집중 보기</span>
+                <button class="mrb-close" type="button" aria-label="관계 보드 닫기">닫기</button>
+            </div>
+            ${hasAnyRelation
+                ? `<div class="mrb-map">
+                    ${relationGroupHtml('선수 과목', prereqCodes, 'prereq')}
+                    <div class="mrb-center">
+                        <span class="mrb-center-kicker">선택 과목</span>
+                        <strong>${selectedName}</strong>
+                        <small>${selectedMeta}</small>
+                    </div>
+                    ${relationGroupHtml('후수 과목', followupCodes, 'followup')}
+                </div>`
+                : `<div class="mrb-single">
+                    <div class="mrb-center">
+                        <span class="mrb-center-kicker">선택 과목</span>
+                        <strong>${selectedName}</strong>
+                        <small>${selectedMeta}</small>
+                    </div>
+                    <div class="mrb-no-links">연결된 선수/후수 과목이 없어요</div>
+                </div>`}
+        `;
+
+        card.insertAdjacentElement('afterend', panel);
+
+        panel.querySelector('.mrb-close').addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearMobileRelationPanel();
+        });
+        panel.querySelectorAll('.mrb-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                jumpToRelationCourse(chip.dataset.code);
+            });
+        });
+    }
+
     function updateTrackActiveCourses() {
+        mobileRelationCode = null;
         // 각 학년 레인 초기화
         for (let y = 1; y <= 4; y++) {
             const col = document.getElementById(`col-year-${y}`);
@@ -472,17 +608,27 @@
         document.querySelectorAll('.timeline-course-card').forEach(card => {
             card.addEventListener('mouseenter', () => {
                 if (pinnedNode) return; // 핀 고정 중엔 다른 노드 호버 미리보기를 하지 않음
+                if (isMobileRoadmap()) return;
                 applyHighlight(card.dataset.code);
             });
 
             card.addEventListener('mouseleave', () => {
                 if (pinnedNode) return; // 핀 고정된 하이라이트 유지
+                if (isMobileRoadmap()) return;
                 clearHighlight();
             });
 
             // 클릭: 같은 노드를 다시 누르면 해제, 아니면 그 노드로 고정(핀)
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (isMobileRoadmap()) {
+                    if (pinnedNode) {
+                        pinnedNode = null;
+                        clearHighlight();
+                    }
+                    toggleMobileRelationPanel(card);
+                    return;
+                }
                 const code = card.dataset.code;
                 if (pinnedNode === code) {
                     pinnedNode = null;
@@ -496,7 +642,10 @@
     }
 
     // 빈 공간(카드 바깥) 클릭 시 핀 고정 해제
-    document.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+        if (isMobileRoadmap() && !e.target.closest('.timeline-course-card') && !e.target.closest('.mobile-relation-panel, .mobile-relation-board')) {
+            clearMobileRelationPanel();
+        }
         if (pinnedNode) {
             pinnedNode = null;
             clearHighlight();

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHU-Weaver 리디자인 시안 — 온보딩</title>
+<!--
+  [디자인 시안 — 실제 앱과 무관한 정적 목업]
+  의도1: dashboard_roadmap_v1의 디자인 언어 계승 — 화이트+얇은그리드 캔버스, 버건디 단일 액센트, 카드 위계
+  의도2: 정본 onboarding.js 흐름 그대로 시각화 — 학과 선택(EE만 available, 나머지 준비중) → 학번 선택 → 이름(선택)
+  의도3: 준비중 학과는 잠긴 노드처럼 회색+점선+🔒로 이중 표기(색약 대응), 선택은 버건디 채움으로 통일
+-->
+<style>
+  :root{
+    --burgundy:hsl(343,66%,33%); --burgundy-soft:hsl(343,50%,95%);
+    --ink:hsl(220,25%,13%); --ink-2:hsl(220,10%,40%); --ink-3:hsl(220,10%,62%);
+    --line:hsl(220,15%,90%); --bg:hsl(220,25%,98%); --card:#fff;
+    --avail:hsl(210,80%,45%); --locked:hsl(220,10%,88%);
+    --r:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Pretendard','Noto Sans KR',sans-serif;color:var(--ink);line-height:1.5;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 48px,
+      linear-gradient(90deg,var(--line) 1px, transparent 1px) 0 0/48px 100%;
+    background-color:var(--bg);background-blend-mode:soft-light}
+
+  /* ── 온보딩 카드 ── */
+  .ob{width:100%;max-width:520px;background:var(--card);border:1px solid var(--line);
+    border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.10);overflow:hidden}
+  .ob-head{padding:28px 32px 0}
+  .logo{font-weight:800;font-size:20px;color:var(--burgundy);letter-spacing:-.5px}
+  .logo span{color:var(--ink)}
+  .ob-head .tit{font-size:22px;font-weight:800;letter-spacing:-.6px;margin-top:18px}
+  .ob-head .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+
+  /* 스텝 인디케이터 */
+  .steps{display:flex;gap:8px;margin-top:18px}
+  .steps .s{flex:1;height:4px;border-radius:99px;background:var(--locked)}
+  .steps .s.on{background:var(--burgundy)}
+
+  .ob-body{padding:22px 32px 8px}
+  .lbl{font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:.4px;
+    text-transform:uppercase;margin-bottom:10px}
+
+  /* ── 학과 선택 (노드형 카드) ── */
+  .depts{display:flex;flex-direction:column;gap:10px}
+  .dept{position:relative;display:flex;align-items:center;gap:12px;
+    background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);
+    padding:14px 16px 14px 18px;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s}
+  .dept::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;
+    border-radius:4px;background:var(--tc,var(--ink-3))}
+  .dept:hover{box-shadow:0 4px 14px rgba(0,0,0,.07);transform:translateY(-1px)}
+  .dept .dn{font-weight:700;letter-spacing:-.3px}
+  .dept .dm{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .dept .rt{margin-left:auto;font-size:11px;color:var(--ink-3)}
+  /* 선택됨 = 버건디 채움 + ✓ */
+  .dept.sel{background:var(--burgundy);border-color:var(--burgundy)}
+  .dept.sel .dn,.dept.sel .dm,.dept.sel .rt{color:#fff}
+  .dept.sel .dm{color:hsla(0,0%,100%,.78)}
+  .dept.sel .rt{font-weight:800;font-size:15px}
+  /* 준비중 = 잠금 노드 */
+  .dept.locked{background:hsl(220,20%,96%);border-style:dashed;cursor:not-allowed}
+  .dept.locked .dn{color:var(--ink-3)}
+  .dept.locked .rt::after{content:"🔒";filter:grayscale(1);opacity:.6}
+  .dept.locked .rt{font-size:12px}
+
+  .hint{font-size:12px;color:var(--avail);margin-top:12px;min-height:16px;
+    padding-left:2px;font-weight:600}
+
+  /* ── 학번 선택 (칩 그리드) ── */
+  .years{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .yr{border:1.5px solid var(--line);border-radius:8px;background:#fff;
+    padding:12px 0;text-align:center;font-size:14px;font-weight:700;cursor:pointer;
+    transition:border-color .12s,background .12s;color:var(--ink-2)}
+  .yr:hover{border-color:var(--avail)}
+  .yr.sel{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+  .yr small{display:block;font-size:10px;font-weight:600;color:var(--ink-3);margin-top:1px}
+  .yr.sel small{color:hsla(0,0%,100%,.7)}
+
+  /* 이름 입력 */
+  .field{margin-top:16px}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:8px;
+    padding:11px 13px;font-size:14px;font-family:inherit;color:var(--ink)}
+  .field input:focus{outline:none;border-color:var(--avail)}
+  .opt{font-size:11px;color:var(--ink-3);font-weight:600;margin-left:6px}
+
+  /* 요약 프리뷰 */
+  .preview{margin-top:16px;display:flex;align-items:center;gap:10px;
+    background:var(--burgundy-soft);border-radius:10px;padding:12px 14px}
+  .preview .av{width:34px;height:34px;border-radius:99px;background:var(--burgundy);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none}
+  .preview .pt{font-size:13px;font-weight:700}
+  .preview .ps{font-size:11.5px;color:var(--ink-2)}
+
+  /* ── 푸터 버튼 ── */
+  .ob-foot{display:flex;gap:10px;padding:18px 32px 26px;border-top:1px solid var(--line);margin-top:18px}
+  .btn{font-size:14px;padding:11px 18px;border-radius:9px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;color:var(--ink-2);font-weight:600}
+  .btn.primary{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+  .btn.primary:disabled{opacity:.4;cursor:not-allowed}
+  .ob-foot .sp{flex:1}
+
+  /* 화면 전환 */
+  .screen{display:none}
+  .screen.active{display:block}
+</style>
+</head>
+<body>
+
+<div class="ob">
+  <div class="ob-head">
+    <div class="logo">KHU-<span>Weaver</span></div>
+    <div class="tit" id="tit">먼저, 학과를 선택하세요</div>
+    <div class="sub" id="sub">선택한 학과·학번의 교육과정으로 로드맵이 구성됩니다</div>
+    <div class="steps">
+      <div class="s on" id="st1"></div>
+      <div class="s" id="st2"></div>
+    </div>
+  </div>
+
+  <!-- STEP 1: 학과 -->
+  <div class="screen active" id="scr1">
+    <div class="ob-body">
+      <div class="lbl">학과 선택</div>
+      <div class="depts">
+        <div class="dept sel" style="--tc:var(--burgundy)" onclick="pickDept(this,'EE',true)">
+          <div><div class="dn">전자공학과</div><div class="dm">7개 학번 교육과정 활성 · 2020–2026</div></div>
+          <div class="rt">✓</div>
+        </div>
+        <div class="dept locked" style="--tc:var(--ink-3)">
+          <div><div class="dn">생체의공학과</div><div class="dm">데이터 수집 중 · 준비 중</div></div>
+          <div class="rt"></div>
+        </div>
+        <div class="dept locked" style="--tc:var(--ink-3)">
+          <div><div class="dn">컴퓨터공학과</div><div class="dm">데이터 수집 중 · 준비 중</div></div>
+          <div class="rt"></div>
+        </div>
+      </div>
+      <div class="hint" id="deptHint">전자공학과 맞춤형 지능형 로드맵이 활성화되었습니다.</div>
+    </div>
+    <div class="ob-foot">
+      <div class="sp"></div>
+      <button class="btn primary" onclick="goStep(2)">다음 · 학번 선택</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: 학번 + 이름 -->
+  <div class="screen" id="scr2">
+    <div class="ob-body">
+      <div class="lbl">입학 학번</div>
+      <div class="years" id="years"></div>
+
+      <div class="field">
+        <div class="lbl" style="margin-top:4px">이름 <span class="opt">선택 · 헤더 표시용</span></div>
+        <input id="name" placeholder="예: 차동균" oninput="renderPreview()">
+      </div>
+
+      <div class="preview">
+        <div class="av" id="pvAv">학</div>
+        <div>
+          <div class="pt" id="pvT">전자공학과 · 23학번</div>
+          <div class="ps">이 프로필로 로드맵·성적 계산기가 구성됩니다</div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-foot">
+      <button class="btn" onclick="goStep(1)">← 이전</button>
+      <div class="sp"></div>
+      <button class="btn primary" onclick="alert('시안입니다 — 실제 앱에서는 로드맵 화면으로 진입합니다')">시작하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var YEARS=["2026","2025","2024","2023","2022","2021","2020"];
+  var state={dept:"전자공학과",deptCode:"EE",year:"2023",name:""};
+
+  function pickDept(el,code,ok){
+    if(!ok)return;
+    document.querySelectorAll('.dept').forEach(function(d){d.classList.remove('sel');
+      if(!d.classList.contains('locked'))d.style.setProperty('--tc','var(--ink-3)');});
+    el.classList.add('sel');el.style.setProperty('--tc','var(--burgundy)');
+    state.deptCode=code;
+  }
+
+  function renderYears(){
+    var box=document.getElementById('years');box.innerHTML='';
+    YEARS.forEach(function(y){
+      var b=document.createElement('div');b.className='yr'+(y===state.year?' sel':'');
+      b.innerHTML=y.slice(2)+'학번<small>'+y+'</small>';
+      b.onclick=function(){state.year=y;renderYears();renderPreview();};
+      box.appendChild(b);
+    });
+  }
+  function renderPreview(){
+    var nm=document.getElementById('name').value.trim();state.name=nm;
+    document.getElementById('pvAv').textContent=nm?nm.charAt(0):'학';
+    document.getElementById('pvT').textContent=
+      (nm?nm+' · ':'')+state.dept+' · '+state.year.slice(2)+'학번';
+  }
+  function goStep(n){
+    document.getElementById('scr1').classList.toggle('active',n===1);
+    document.getElementById('scr2').classList.toggle('active',n===2);
+    document.getElementById('st2').classList.toggle('on',n===2);
+    if(n===2){document.getElementById('tit').textContent='입학 학번을 선택하세요';
+      document.getElementById('sub').textContent='해당 학번의 교육과정 편성표가 적용됩니다';}
+    else{document.getElementById('tit').textContent='먼저, 학과를 선택하세요';
+      document.getElementById('sub').textContent='선택한 학과·학번의 교육과정으로 로드맵이 구성됩니다';}
+  }
+  renderYears();renderPreview();
+</script>
+</body>
+</html>

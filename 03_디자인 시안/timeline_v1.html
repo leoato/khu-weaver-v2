@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHU-Weaver 리디자인 시안 — 선후수 타임라인</title>
+<!--
+  [디자인 시안 — 실제 앱과 무관한 정적 목업]
+  의도1: dashboard_roadmap_v1의 노드 문법(상태 3종·트랙 4px 스트라이프·화이트 그리드) 그대로, 밀도만 높임
+  의도2: 8개 학기 레인을 가로로 펼치고 선수관계를 SVG 베지어 간선으로 실제 연결 — 선택 노드의 선수/후수 경로를 하이라이트
+  의도3: 색이 아닌 형태로 상태 구분(채움/파랑테두리/회색점선+🔒), 간선도 실선(충족)·점선(미충족)으로 이중 표기해 색약 대응
+-->
+<style>
+  :root{
+    --burgundy:hsl(343,66%,33%); --burgundy-soft:hsl(343,50%,95%);
+    --ink:hsl(220,25%,13%); --ink-2:hsl(220,10%,40%); --ink-3:hsl(220,10%,62%);
+    --line:hsl(220,15%,90%); --bg:hsl(220,25%,98%); --card:#fff;
+    --avail:hsl(210,80%,45%); --locked:hsl(220,10%,88%);
+    --t-math:hsl(45,90%,45%); --t-phys:hsl(15,80%,50%); --t-comp:hsl(200,85%,45%);
+    --t-csy:hsl(343,66%,40%); --t-sw:hsl(145,60%,35%); --t-cs:hsl(265,60%,45%);
+    --r:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+
+  header{display:flex;align-items:center;gap:14px;height:56px;padding:0 24px;background:#fff;
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+  .logo{font-weight:800;font-size:18px;color:var(--burgundy);letter-spacing:-.5px}
+  .logo span{color:var(--ink)}
+  .chip{font-size:13px;padding:4px 12px;border:1px solid var(--line);border-radius:99px;color:var(--ink-2);background:var(--bg)}
+  .chip b{color:var(--ink)}
+  header .sp{flex:1}
+  .btn{font-size:13px;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-2)}
+  .btn.primary{background:var(--burgundy);border-color:var(--burgundy);color:#fff;font-weight:600}
+
+  .toolbar{display:flex;align-items:center;gap:18px;padding:14px 32px 0}
+  .toolbar h1{font-size:20px;font-weight:800;letter-spacing:-.5px}
+  .toolbar .sub{font-size:13px;color:var(--ink-2)}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-left:auto;flex-wrap:wrap}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+  .legend .ln{display:inline-block;width:22px;height:0;border-top:2px solid var(--ink-3);margin-right:5px;vertical-align:3px}
+  .legend .ln.dash{border-top-style:dashed}
+
+  /* ── 타임라인 캔버스 (가로 스크롤) ── */
+  .scroller{overflow-x:auto;padding:18px 32px 40px}
+  .board{position:relative;min-width:1180px}
+  #edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+
+  .lanes{display:grid;grid-template-columns:repeat(8,1fr);gap:16px;position:relative;z-index:2}
+  .lane{display:flex;flex-direction:column;gap:12px}
+  .lane-h{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;
+    padding:6px 8px;background:#fff;border:1px solid var(--line);border-radius:6px;text-align:center;position:sticky;top:0}
+
+  .node{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);
+    padding:9px 10px 9px 14px;cursor:pointer;transition:box-shadow .15s,transform .15s;font-size:12.5px}
+  .node:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-1px)}
+  .node::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:4px;border-radius:4px;background:var(--tc,var(--ink-3))}
+  .node .nm{font-weight:700;letter-spacing:-.3px;line-height:1.25}
+  .node .meta{font-size:10.5px;color:var(--ink-3);margin-top:2px}
+  .node.done{background:var(--burgundy);border-color:var(--burgundy)}
+  .node.done .nm,.node.done .meta{color:#fff}
+  .node.done .meta{color:hsla(0,0%,100%,.72)}
+  .node.done::after{content:"✓";position:absolute;right:8px;top:7px;color:#fff;font-weight:800;font-size:12px}
+  .node.avail{border-color:var(--avail);border-width:2px}
+  .node.locked{background:hsl(220,20%,96%);border-style:dashed}
+  .node.locked .nm{color:var(--ink-3);font-weight:600}
+  .node.locked::after{content:"🔒";position:absolute;right:8px;top:7px;font-size:10px;filter:grayscale(1);opacity:.55}
+
+  /* 하이라이트 상태 */
+  .node.dim{opacity:.28}
+  .node.hl{box-shadow:0 0 0 3px var(--burgundy-soft),0 6px 18px rgba(0,0,0,.12);transform:translateY(-1px)}
+
+  /* 간선 스타일 (SVG stroke는 JS에서 클래스로) */
+  .edge{stroke:var(--ink-3);stroke-width:1.6;fill:none;opacity:.35}
+  .edge.locked{stroke-dasharray:4 4;opacity:.45}
+  .edge.hl{stroke:var(--burgundy);stroke-width:2.4;opacity:1}
+  .edge.dim{opacity:.08}
+
+  .foot{padding:0 32px 28px;font-size:12px;color:var(--ink-3)}
+  .foot b{color:var(--ink-2)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">KHU-<span>Weaver</span></div>
+  <div class="chip">전자공학과 · <b>23학번</b></div>
+  <div class="chip">선후수 타임라인</div>
+  <div class="sp"></div>
+  <button class="btn" onclick="reset()">전체 보기</button>
+  <button class="btn primary">내 빌드 공유</button>
+</header>
+
+<div class="toolbar">
+  <div>
+    <h1>선후수 타임라인</h1>
+    <div class="sub">노드를 클릭하면 선수(위쪽)·후수(아래쪽) 경로를 따라갑니다</div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--burgundy)"></i>이수완료</span>
+    <span><i style="background:#fff;border:2px solid var(--avail)"></i>수강가능</span>
+    <span><i style="background:var(--locked)"></i>잠김</span>
+    <span><span class="ln"></span>선수충족</span>
+    <span><span class="ln dash"></span>선수미충족</span>
+  </div>
+</div>
+
+<div class="scroller">
+  <div class="board" id="board">
+    <svg id="edges"></svg>
+    <div class="lanes" id="lanes"></div>
+  </div>
+</div>
+
+<div class="foot">더미 데이터 · 8개 학기 22개 노드 / 24개 선수 간선 — 실제 앱은 학번별 편성표에서 자동 생성됩니다.</div>
+
+<script>
+// ── 더미 커리큘럼(노드 + 선수관계) ─────────────────────────────
+// col: 0=1-1 ~ 7=4-2, st: done|avail|locked, tc: 트랙 CSS 변수
+var N = {
+  calc:{nm:"미분적분학",col:0,st:"done",tc:"t-math",cr:3},
+  linalg:{nm:"선형대수",col:0,st:"done",tc:"t-math",cr:3},
+  py:{nm:"파이선프로그래밍",col:0,st:"done",tc:"t-comp",cr:3},
+  phys1:{nm:"물리학및실험1",col:1,st:"done",tc:"t-phys",cr:3,pre:[]},
+  logic:{nm:"논리회로",col:1,st:"done",tc:"t-csy",cr:3,pre:[]},
+  oop:{nm:"객체지향프로그래밍",col:2,st:"done",tc:"t-comp",cr:3,pre:["py"]},
+  circuit:{nm:"회로이론",col:2,st:"done",tc:"t-csy",cr:3,pre:["phys1"]},
+  prob:{nm:"확률및랜덤변수",col:2,st:"done",tc:"t-math",cr:3,pre:["calc"]},
+  emag:{nm:"전자기학2",col:3,st:"avail",tc:"t-sw",cr:3,pre:["phys1"]},
+  sig:{nm:"신호와시스템",col:3,st:"avail",tc:"t-cs",cr:3,pre:["calc","linalg"]},
+  digsys:{nm:"디지털시스템설계",col:3,st:"avail",tc:"t-csy",cr:3,pre:["logic"]},
+  ec1:{nm:"전자회로1",col:4,st:"avail",tc:"t-csy",cr:3,pre:["circuit"]},
+  dsp:{nm:"디지털신호처리",col:4,st:"locked",tc:"t-cs",cr:3,pre:["sig"]},
+  micro:{nm:"마이크로프로세서",col:4,st:"locked",tc:"t-csy",cr:3,pre:["digsys"]},
+  semi:{nm:"반도체공학",col:4,st:"locked",tc:"t-sw",cr:3,pre:["emag"]},
+  ml:{nm:"머신러닝개론",col:5,st:"locked",tc:"t-comp",cr:3,pre:["linalg","prob"]},
+  ec2:{nm:"전자회로2",col:5,st:"locked",tc:"t-csy",cr:3,pre:["ec1"]},
+  comm:{nm:"디지털통신",col:5,st:"locked",tc:"t-cs",cr:3,pre:["dsp"]},
+  vlsi:{nm:"VLSI설계",col:6,st:"locked",tc:"t-sw",cr:3,pre:["ec2","semi"]},
+  mobile:{nm:"이동통신",col:6,st:"locked",tc:"t-cs",cr:3,pre:["comm"]},
+  embed:{nm:"임베디드시스템",col:6,st:"locked",tc:"t-csy",cr:3,pre:["micro"]},
+  capstone:{nm:"종합설계",col:7,st:"locked",tc:"t-csy",cr:3,pre:["ec2","micro","dsp"]}
+};
+var LANE_H=["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"];
+var METfmt={done:"이수완료",avail:"수강가능",locked:"선수 미충족"};
+
+// ── 렌더 ──────────────────────────────────────────────────────
+var lanes=document.getElementById('lanes');
+for(var c=0;c<8;c++){
+  var l=document.createElement('div');l.className='lane';
+  l.innerHTML='<div class="lane-h">'+LANE_H[c]+'</div>';
+  lanes.appendChild(l);
+}
+var laneEls=lanes.querySelectorAll('.lane');
+Object.keys(N).forEach(function(id){
+  var d=N[id];var el=document.createElement('div');
+  el.className='node '+d.st;el.id='n_'+id;el.style.setProperty('--tc','var(--'+d.tc+')');
+  var pre=(d.pre&&d.pre.length)?('← '+d.pre.map(function(p){return N[p].nm;}).join(', ')):(METfmt[d.st]);
+  el.innerHTML='<div class="nm">'+d.nm+'</div><div class="meta">'+d.cr+'학점 · '+pre+'</div>';
+  el.onclick=function(){focus(id);};
+  laneEls[d.col].appendChild(el);
+});
+
+// ── 간선 그리기 ───────────────────────────────────────────────
+var svg=document.getElementById('edges');
+var edges=[]; // {from,to,path}
+function drawEdges(){
+  svg.innerHTML='';edges=[];
+  var board=document.getElementById('board').getBoundingClientRect();
+  svg.setAttribute('viewBox','0 0 '+board.width+' '+board.height);
+  Object.keys(N).forEach(function(id){
+    var d=N[id];if(!d.pre)return;
+    d.pre.forEach(function(p){
+      var a=document.getElementById('n_'+p).getBoundingClientRect();
+      var b=document.getElementById('n_'+id).getBoundingClientRect();
+      var x1=a.right-board.left, y1=a.top+a.height/2-board.top;
+      var x2=b.left-board.left,  y2=b.top+b.height/2-board.top;
+      var mx=(x1+x2)/2;
+      var path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d','M '+x1+' '+y1+' C '+mx+' '+y1+' '+mx+' '+y2+' '+x2+' '+y2);
+      var cls='edge'+(N[id].st==='locked'?' locked':'');
+      path.setAttribute('class',cls);
+      svg.appendChild(path);
+      edges.push({from:p,to:id,el:path});
+    });
+  });
+}
+
+// ── 포커스(선수·후수 경로 하이라이트) ──────────────────────────
+var current=null;
+function ancestors(id,set){ (N[id].pre||[]).forEach(function(p){if(!set[p]){set[p]=1;ancestors(p,set);}}); }
+function descendants(id,set){ Object.keys(N).forEach(function(k){ if((N[k].pre||[]).indexOf(id)>=0 && !set[k]){set[k]=1;descendants(k,set);} }); }
+function focus(id){
+  if(current===id){reset();return;}
+  current=id;
+  var keep={};keep[id]=1;ancestors(id,keep);descendants(id,keep);
+  Object.keys(N).forEach(function(k){
+    var el=document.getElementById('n_'+k);
+    el.classList.toggle('dim',!keep[k]);
+    el.classList.toggle('hl',k===id);
+  });
+  edges.forEach(function(e){
+    var on=keep[e.from]&&keep[e.to];
+    e.el.classList.toggle('hl',on);e.el.classList.toggle('dim',!on);
+  });
+}
+function reset(){
+  current=null;
+  Object.keys(N).forEach(function(k){var el=document.getElementById('n_'+k);el.classList.remove('dim','hl');});
+  edges.forEach(function(e){e.el.classList.remove('hl','dim');});
+}
+
+window.addEventListener('load',drawEdges);
+window.addEventListener('resize',function(){drawEdges();if(current)focus(current);});
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHU-Weaver 리디자인 시안 v1 — roadmap.sh형 대시보드</title>
+<!--
+  [디자인 시안 — 실제 앱과 무관한 정적 목업]
+  방향: roadmap.sh형 · 선후수 노드 트리가 주인공, 우측에 요약 사이드바
+  가독성 원칙:
+   1) 화면의 주인공은 하나(로드맵). 이수율·레이더는 사이드바로 강등
+   2) 노드 상태 3종을 색이 아닌 "채움/테두리/회색+자물쇠"로 구분 (색약 대응)
+   3) 배경 그라데이션 제거, 순수 화이트 + 얇은 그리드로 캔버스 느낌
+   4) 트랙 컬러는 노드 좌측 4px 스트라이프로만 사용 (면적 최소화)
+-->
+<style>
+  :root{
+    --burgundy:hsl(343,66%,33%); --burgundy-soft:hsl(343,50%,95%);
+    --ink:hsl(220,25%,13%); --ink-2:hsl(220,10%,40%); --ink-3:hsl(220,10%,62%);
+    --line:hsl(220,15%,90%); --bg:hsl(220,25%,98%); --card:#fff;
+    --done:hsl(343,66%,33%); --avail:hsl(210,80%,45%); --locked:hsl(220,10%,88%);
+    --t-math:hsl(45,90%,45%); --t-phys:hsl(15,80%,50%); --t-comp:hsl(200,85%,45%);
+    --t-csy:hsl(343,66%,40%); --t-sw:hsl(145,60%,35%); --t-cs:hsl(265,60%,45%);
+    --r:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+
+  /* ── 상단바: 한 줄, 낮게 ── */
+  header{display:flex;align-items:center;gap:14px;height:56px;padding:0 24px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .logo{font-weight:800;font-size:18px;color:var(--burgundy);letter-spacing:-.5px}
+  .logo span{color:var(--ink)}
+  .chip{font-size:13px;padding:4px 12px;border:1px solid var(--line);border-radius:99px;color:var(--ink-2);background:var(--bg)}
+  .chip b{color:var(--ink)}
+  header .sp{flex:1}
+  .btn{font-size:13px;padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-2)}
+  .btn.primary{background:var(--burgundy);border-color:var(--burgundy);color:#fff;font-weight:600}
+
+  /* ── 레이아웃: 로드맵(주인공) + 우측 사이드바 ── */
+  .wrap{display:grid;grid-template-columns:1fr 300px;gap:0;min-height:calc(100vh - 56px)}
+
+  /* ── 로드맵 캔버스 ── */
+  .canvas{padding:28px 32px;background:
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 48px,
+    linear-gradient(90deg,var(--line) 1px, transparent 1px) 0 0/48px 100%;
+    background-color:var(--bg);background-blend-mode:soft-light}
+  .canvas h1{font-size:20px;font-weight:800;letter-spacing:-.5px}
+  .canvas .sub{font-size:13px;color:var(--ink-2);margin:4px 0 20px}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--ink-2);margin-bottom:20px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+
+  /* 학기 레인: 세로 컬럼 */
+  .lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;position:relative}
+  .lane{display:flex;flex-direction:column;gap:12px}
+  .lane-h{font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;
+    padding:6px 10px;background:#fff;border:1px solid var(--line);border-radius:6px;text-align:center}
+
+  /* 노드(과목 카드) */
+  .node{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);
+    padding:10px 12px 10px 16px;cursor:pointer;transition:box-shadow .15s, transform .15s;font-size:13px}
+  .node:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px)}
+  .node::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:4px;background:var(--tc,var(--ink-3))}
+  .node .nm{font-weight:700;letter-spacing:-.3px}
+  .node .meta{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .node .meta b{color:var(--ink-2);font-weight:600}
+  /* 상태 3종 */
+  .node.done{background:var(--burgundy);border-color:var(--burgundy)}
+  .node.done .nm,.node.done .meta,.node.done .meta b{color:#fff}
+  .node.done .meta{color:hsla(0,0%,100%,.75)}
+  .node.done::after{content:"✓";position:absolute;right:10px;top:8px;color:#fff;font-weight:800}
+  .node.avail{border-color:var(--avail);border-width:2px}
+  .node.avail::after{content:"수강 가능";position:absolute;right:8px;top:8px;font-size:10px;color:var(--avail);font-weight:700}
+  .node.locked{background:hsl(220,20%,96%);border-style:dashed;color:var(--ink-3)}
+  .node.locked .nm{color:var(--ink-3);font-weight:600}
+  .node.locked::after{content:"🔒";position:absolute;right:9px;top:8px;font-size:11px;filter:grayscale(1);opacity:.6}
+
+  /* ── 우측 사이드바 ── */
+  aside{background:#fff;border-left:1px solid var(--line);padding:24px 20px;display:flex;flex-direction:column;gap:22px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h3{font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:.5px;margin-bottom:10px}
+  .big{font-size:34px;font-weight:800;letter-spacing:-1px}
+  .big small{font-size:14px;color:var(--ink-3);font-weight:600}
+  .bar{height:8px;background:var(--locked);border-radius:99px;margin:10px 0 6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:52%;background:var(--burgundy);border-radius:99px}
+  .bar-cap{font-size:11.5px;color:var(--ink-3)}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi .v{font-size:20px;font-weight:800}
+  .kpi .k{font-size:11px;color:var(--ink-3);margin-top:1px}
+  .next li{list-style:none;display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .next li:last-child{border:none}
+  .next .dot{width:8px;height:8px;border-radius:99px;flex:none}
+  .next .why{font-size:11px;color:var(--ink-3);margin-left:auto;text-align:right}
+  .radar{display:block;margin:0 auto}
+
+  /* 상세 패널 (roadmap.sh처럼 노드 클릭 시) */
+  .sheet{position:fixed;right:320px;bottom:20px;width:320px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.14);padding:18px;display:none;z-index:20}
+  .sheet.show{display:block}
+  .sheet .tt{font-weight:800;font-size:15px}
+  .sheet .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--burgundy-soft);color:var(--burgundy);font-weight:700;margin:6px 4px 10px 0}
+  .sheet p{font-size:12.5px;color:var(--ink-2)}
+  .sheet .x{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--ink-3);font-size:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">KHU-<span>Weaver</span></div>
+  <div class="chip">전자공학과 · <b>23학번</b></div>
+  <div class="chip">2026-1학기 기준</div>
+  <div class="sp"></div>
+  <button class="btn">성적 계산기</button>
+  <button class="btn primary">내 빌드 공유</button>
+</header>
+
+<div class="wrap">
+  <main class="canvas">
+    <h1>나의 전공 로드맵</h1>
+    <div class="sub">선수과목이 풀리면 노드가 파란 테두리로 바뀝니다 · 노드를 클릭하면 상세 정보</div>
+    <div class="legend">
+      <span><i style="background:var(--burgundy)"></i>이수 완료</span>
+      <span><i style="background:#fff;border:2px solid var(--avail)"></i>수강 가능</span>
+      <span><i style="background:var(--locked)"></i>선수과목 미충족</span>
+    </div>
+
+    <div class="lanes">
+      <div class="lane">
+        <div class="lane-h">1학년</div>
+        <div class="node done" style="--tc:var(--t-math)"><div class="nm">미분적분학</div><div class="meta">전공기초 · <b>3학점</b></div></div>
+        <div class="node done" style="--tc:var(--t-math)"><div class="nm">선형대수</div><div class="meta">전공기초 · <b>3학점</b></div></div>
+        <div class="node done" style="--tc:var(--t-comp)"><div class="nm">웹/파이선프로그래밍</div><div class="meta">전공기초 · <b>3학점</b></div></div>
+        <div class="node done" style="--tc:var(--t-phys)"><div class="nm">물리학및실험 1·2</div><div class="meta">전공기초 · <b>6학점</b></div></div>
+      </div>
+      <div class="lane">
+        <div class="lane-h">2학년</div>
+        <div class="node done" style="--tc:var(--t-csy)"><div class="nm">논리회로</div><div class="meta">전공필수 · <b>3학점</b></div></div>
+        <div class="node done" style="--tc:var(--t-csy)"><div class="nm">회로이론</div><div class="meta">전공필수 · <b>3학점</b></div></div>
+        <div class="node done" style="--tc:var(--t-comp)"><div class="nm">객체지향프로그래밍및실습</div><div class="meta">전공기초 · <b>3학점</b></div></div>
+        <div class="node avail" style="--tc:var(--t-cs)" onclick="sheet(true)"><div class="nm">신호와시스템</div><div class="meta">전공필수 · <b>3학점</b></div></div>
+        <div class="node avail" style="--tc:var(--t-sw)"><div class="nm">전자기학 2</div><div class="meta">전공선택 · <b>3학점</b></div></div>
+      </div>
+      <div class="lane">
+        <div class="lane-h">3학년</div>
+        <div class="node avail" style="--tc:var(--t-csy)"><div class="nm">전자회로 1</div><div class="meta">전공필수 · <b>3학점</b></div></div>
+        <div class="node locked" style="--tc:var(--t-cs)"><div class="nm">디지털신호처리</div><div class="meta">← 신호와시스템</div></div>
+        <div class="node locked" style="--tc:var(--t-sw)"><div class="nm">반도체공학</div><div class="meta">← 물리전자</div></div>
+        <div class="node locked" style="--tc:var(--t-comp)"><div class="nm">머신러닝개론</div><div class="meta">← 선형대수 + 확률및랜덤변수</div></div>
+      </div>
+      <div class="lane">
+        <div class="lane-h">4학년</div>
+        <div class="node locked" style="--tc:var(--t-csy)"><div class="nm">종합설계</div><div class="meta">← 기초회로실험 외 2과목</div></div>
+        <div class="node locked" style="--tc:var(--t-cs)"><div class="nm">이동통신</div><div class="meta">← 디지털통신</div></div>
+        <div class="node locked" style="--tc:var(--t-sw)"><div class="nm">VLSI설계</div><div class="meta">← 전자회로 1</div></div>
+      </div>
+    </div>
+  </main>
+
+  <aside>
+    <div class="card">
+      <h3>졸업 이수율</h3>
+      <div class="big">68 / 130 <small>학점</small></div>
+      <div class="bar"><i></i></div>
+      <div class="bar-cap">전공기초 25/25 완료 · 전공필수 12/23 · 전공선택 6/28</div>
+    </div>
+    <div class="duo">
+      <div class="kpi"><div class="v">3.87</div><div class="k">전공 평점 (4.3)</div></div>
+      <div class="kpi"><div class="v">임베디드</div><div class="k">주력 트랙</div></div>
+    </div>
+    <div class="card">
+      <h3>역량 레이더</h3>
+      <svg class="radar" width="200" height="170" viewBox="0 0 200 170">
+        <g stroke="hsl(220,15%,88%)" fill="none">
+          <polygon points="100,15 170,55 170,120 100,160 30,120 30,55"/>
+          <polygon points="100,45 145,70 145,108 100,133 55,108 55,70"/>
+          <polygon points="100,75 122,87 122,105 100,117 78,105 78,87"/>
+        </g>
+        <polygon points="100,30 152,62 138,112 100,140 48,116 62,66" fill="hsla(343,66%,33%,.18)" stroke="hsl(343,66%,33%)" stroke-width="2"/>
+        <g font-size="10" fill="hsl(220,10%,50%)" text-anchor="middle">
+          <text x="100" y="10">수학</text><text x="184" y="55">물리</text><text x="184" y="132">회로</text>
+          <text x="100" y="169">반도체</text><text x="16" y="132">통신</text><text x="16" y="55">SW</text>
+        </g>
+      </svg>
+    </div>
+    <div class="card">
+      <h3>다음 학기 추천 빌드 · 임베디드 트랙</h3>
+      <ul class="next">
+        <li><span class="dot" style="background:var(--t-cs)"></span>신호와시스템<span class="why">DSP 선수</span></li>
+        <li><span class="dot" style="background:var(--t-csy)"></span>전자회로 1<span class="why">4개 과목 잠금해제</span></li>
+        <li><span class="dot" style="background:var(--t-csy)"></span>마이크로프로세서<span class="why">트랙 핵심</span></li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="sheet" id="sheet">
+  <span class="x" onclick="sheet(false)">✕</span>
+  <div class="tt">신호와시스템 <span style="color:var(--ink-3);font-weight:600;font-size:12px">EE210 · 3학점</span></div>
+  <span class="tag">전공필수</span><span class="tag">통신·신호 트랙</span><span class="tag">2-2 개설</span>
+  <p><b>이 과목이 여는 문:</b> 디지털신호처리, 영상신호처리, 실감미디어시스템, 종합설계</p>
+  <p style="margin-top:8px"><b>선배 데이터:</b> 임베디드 트랙 선배 78%가 2학년 2학기에 이수</p>
+</div>
+
+<script>function sheet(on){document.getElementById('sheet').classList.toggle('show',on)}</script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHU-Weaver 리디자인 시안 — 성적 계산기 모달</title>
+<!--
+  [디자인 시안 — 실제 앱과 무관한 정적 목업]
+  의도1: dashboard_roadmap_v1 언어 계승 — 버건디 단일 액센트, 화이트 카드, 트랙 4px 스트라이프를 성적 행에도 적용
+  의도2: [UX버그①] 계절학기 모호성 해결 — 탭을 '정규/계절' 그룹으로 나누고 계절탭은 "N학년 여름·겨울"로 학년+계절 명시
+  의도3: [UX버그②] 4-2 탭 잘림 해결 — 탭 줄을 가로 스크롤(overflow-x)+양끝 페이드+좌우 화살표로 처리해 마지막 학기까지 항상 도달
+-->
+<style>
+  :root{
+    --burgundy:hsl(343,66%,33%); --burgundy-soft:hsl(343,50%,95%);
+    --ink:hsl(220,25%,13%); --ink-2:hsl(220,10%,40%); --ink-3:hsl(220,10%,62%);
+    --line:hsl(220,15%,90%); --bg:hsl(220,25%,98%); --card:#fff;
+    --avail:hsl(210,80%,45%); --locked:hsl(220,10%,88%);
+    --t-math:hsl(45,90%,45%); --t-phys:hsl(15,80%,50%); --t-comp:hsl(200,85%,45%);
+    --t-csy:hsl(343,66%,40%); --t-sw:hsl(145,60%,35%); --t-cs:hsl(265,60%,45%);
+    --summer:hsl(35,85%,50%); --winter:hsl(205,70%,52%);
+    --r:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Pretendard','Noto Sans KR',sans-serif;color:var(--ink);line-height:1.5;
+    min-height:100vh;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 48px,
+      linear-gradient(90deg,var(--line) 1px, transparent 1px) 0 0/48px 100%;
+    background-color:var(--bg);background-blend-mode:soft-light}
+  .backdrop{position:fixed;inset:0;background:rgba(20,22,28,.32);
+    display:flex;align-items:center;justify-content:center;padding:24px;z-index:10}
+
+  /* ── 모달 ── */
+  .modal{width:100%;max-width:620px;max-height:90vh;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.24);
+    display:flex;flex-direction:column;overflow:hidden}
+  .m-head{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line)}
+  .m-head .logo{font-weight:800;font-size:16px;color:var(--burgundy)}
+  .m-head .logo span{color:var(--ink)}
+  .m-head h2{font-size:16px;font-weight:800;letter-spacing:-.4px}
+  .m-head .scale{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-weight:600;
+    border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+  .x{cursor:pointer;color:var(--ink-3);font-size:18px;padding:2px 4px}
+
+  /* ── 학기 탭 (버그② 해결: 가로 스크롤 + 페이드 + 화살표) ── */
+  .tabsbar{position:relative;border-bottom:1px solid var(--line);background:var(--bg)}
+  .tabgroups{display:flex;gap:6px;overflow-x:auto;scroll-behavior:smooth;
+    padding:10px 40px;scrollbar-width:thin}
+  .tabgroups::-webkit-scrollbar{height:6px}
+  .tabgroups::-webkit-scrollbar-thumb{background:var(--locked);border-radius:99px}
+  .grp{display:flex;align-items:center;gap:6px;flex:none}
+  .grp .glabel{font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.4px;
+    padding:0 4px;border-left:2px solid var(--line);margin-left:4px}
+  .tab{flex:none;font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:8px;
+    border:1.5px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;white-space:nowrap;
+    display:flex;align-items:center;gap:5px}
+  .tab:hover{border-color:var(--avail)}
+  .tab.sel{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+  /* 계절학기 탭: 학년+계절 명시(버그① 해결) — 색 점 + 텍스트 이중 표기 */
+  .tab .season{width:8px;height:8px;border-radius:2px;flex:none}
+  .tab.summer .season{background:var(--summer)}
+  .tab.winter .season{background:var(--winter)}
+  .tab.summer.sel,.tab.winter.sel{background:var(--burgundy);border-color:var(--burgundy)}
+  /* 좌우 페이드 + 화살표 */
+  .fade{position:absolute;top:0;bottom:0;width:34px;pointer-events:none;z-index:2}
+  .fade.l{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+  .fade.r{right:0;background:linear-gradient(270deg,var(--bg),transparent)}
+  .arw{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:26px;height:26px;
+    border-radius:99px;border:1px solid var(--line);background:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-2);
+    box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .arw.l{left:6px}.arw.r{right:6px}
+
+  /* ── 성적 입력 본문 ── */
+  .m-body{padding:16px 22px;overflow-y:auto}
+  .ctx{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .ctx .now{font-size:15px;font-weight:800;letter-spacing:-.3px}
+  .ctx .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px}
+  .ctx .badge.reg{background:var(--burgundy-soft);color:var(--burgundy)}
+  .ctx .badge.summer{background:hsl(35,85%,93%);color:hsl(35,85%,32%)}
+  .ctx .badge.winter{background:hsl(205,70%,93%);color:hsl(205,70%,34%)}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.4px;
+    text-align:left;padding:0 8px 8px}
+  td{padding:6px 8px;border-top:1px solid var(--line)}
+  .crow td:first-child{position:relative;padding-left:16px}
+  .crow td:first-child::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;
+    border-radius:4px;background:var(--tc,var(--ink-3))}
+  .cname{font-weight:700;font-size:13px}
+  .ctag{font-size:10.5px;color:var(--ink-3)}
+  .cr{font-size:13px;color:var(--ink-2);width:60px}
+  select{font-family:inherit;font-size:13px;font-weight:700;padding:5px 8px;border-radius:7px;
+    border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;width:76px}
+  select:focus{outline:none;border-color:var(--avail)}
+  .gp{width:52px;text-align:right;font-size:13px;font-weight:700;color:var(--ink-2)}
+
+  /* ── 합계 푸터 ── */
+  .m-foot{border-top:1px solid var(--line);padding:16px 22px;display:flex;align-items:center;gap:18px}
+  .m-foot .sem{display:flex;flex-direction:column}
+  .m-foot .k{font-size:10.5px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .m-foot .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .m-foot .v small{font-size:12px;color:var(--ink-3);font-weight:600}
+  .m-foot .div{width:1px;align-self:stretch;background:var(--line)}
+  .m-foot .cum .v{color:var(--burgundy)}
+  .m-foot .sp{flex:1}
+  .btn{font-size:13px;padding:9px 16px;border-radius:9px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;color:var(--ink-2);font-weight:600}
+  .btn.primary{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="backdrop">
+  <div class="modal">
+    <div class="m-head">
+      <div class="logo">KHU-<span>Weaver</span></div>
+      <h2>성적 계산기</h2>
+      <span class="scale">4.3 만점</span>
+      <span class="x">✕</span>
+    </div>
+
+    <!-- 학기 탭: 정규 + 계절 그룹, 가로 스크롤 -->
+    <div class="tabsbar">
+      <div class="fade l"></div><div class="fade r"></div>
+      <div class="arw l" onclick="scrollTabs(-200)">‹</div>
+      <div class="arw r" onclick="scrollTabs(200)">›</div>
+      <div class="tabgroups" id="tabgroups"></div>
+    </div>
+
+    <div class="m-body">
+      <div class="ctx" id="ctx"></div>
+      <table>
+        <thead><tr><th>과목</th><th>학점</th><th>등급</th><th style="text-align:right">평점</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="m-foot">
+      <div class="sem"><span class="k">이 학기</span><span class="v" id="semGpa">0.00</span></div>
+      <div class="div"></div>
+      <div class="sem cum"><span class="k">전체 평점</span><span class="v" id="cumGpa">3.78 <small>/ 4.3</small></span></div>
+      <div class="sp"></div>
+      <button class="btn">초기화</button>
+      <button class="btn primary">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 4.3 만점 등급 매핑 ─────────────────────────────────────────
+var GP={ "A+":4.3,"A0":4.0,"B+":3.3,"B0":3.0,"C+":2.3,"C0":2.0,"D+":1.3,"D0":1.0,"F":0.0,"P":null };
+
+// ── 학기 탭 정의 (버그①: 계절학기에 학년+계절 명시) ─────────────
+// type: reg|summer|winter, y: 학년
+var TERMS=[];
+for(var y=1;y<=4;y++){
+  TERMS.push({id:y+"-1",label:y+"-1",type:"reg",y:y});
+  TERMS.push({id:y+"-2",label:y+"-2",type:"reg",y:y});
+  TERMS.push({id:y+"-su",label:y+"학년 여름",type:"summer",y:y});
+  TERMS.push({id:y+"-wi",label:y+"학년 겨울",type:"winter",y:y});
+}
+
+// ── 더미 성적 데이터(학기별) ───────────────────────────────────
+var DATA={
+  "2-2":[
+    {nm:"신호와시스템",tag:"전공필수 · EE210",tc:"t-cs",cr:3,g:"A0"},
+    {nm:"전자회로1",tag:"전공필수 · EE311",tc:"t-csy",cr:3,g:"B+"},
+    {nm:"전자기학2",tag:"전공선택 · EE224",tc:"t-sw",cr:3,g:"A+"},
+    {nm:"확률및랜덤변수",tag:"전공기초 · EE211",tc:"t-math",cr:3,g:"A0"},
+    {nm:"기술과경영",tag:"교양 · GE102",tc:"t-comp",cr:2,g:"A+"}
+  ],
+  "2-su":[
+    {nm:"공학수학2",tag:"전공기초 · 계절 · EE203",tc:"t-math",cr:3,g:"B+"},
+    {nm:"영어회화",tag:"교양 · 계절 · GE211",tc:"t-comp",cr:2,g:"A0"}
+  ],
+  "4-2":[
+    {nm:"종합설계2",tag:"전공필수 · EE491",tc:"t-csy",cr:3,g:"A+"},
+    {nm:"이동통신",tag:"전공선택 · EE462",tc:"t-cs",cr:3,g:"A0"},
+    {nm:"VLSI설계",tag:"전공선택 · EE471",tc:"t-sw",cr:3,g:"B+"},
+    {nm:"기술창업",tag:"교양 · GE402",tc:"t-comp",cr:2,g:"P"}
+  ]
+};
+function rowsFor(id){ return DATA[id]|| [
+  {nm:"과목을 추가하세요",tag:"이 학기 입력 없음 · 더미",tc:"",cr:3,g:"A0"}
+];}
+
+// ── 탭 렌더 ────────────────────────────────────────────────────
+var groups=document.getElementById('tabgroups');
+var current="2-2";
+function renderTabs(){
+  groups.innerHTML='';
+  var lastY=0;
+  TERMS.forEach(function(t){
+    if(t.y!==lastY){lastY=t.y;
+      var g=document.createElement('span');g.className='glabel';g.textContent=t.y+'학년';
+      groups.appendChild(g);}
+    var b=document.createElement('div');
+    b.className='tab'+(t.type!=='reg'?' '+t.type:'')+(t.id===current?' sel':'');
+    b.innerHTML=(t.type!=='reg'?'<span class="season"></span>':'')+t.label;
+    b.onclick=function(){current=t.id;renderTabs();renderBody();};
+    groups.appendChild(b);
+  });
+  // 선택 탭이 보이도록 스크롤
+  var sel=groups.querySelector('.tab.sel');
+  if(sel)sel.scrollIntoView({inline:'center',block:'nearest'});
+}
+function scrollTabs(dx){groups.scrollBy({left:dx});}
+
+// ── 본문 렌더 + GPA 계산 ───────────────────────────────────────
+function termOf(id){return TERMS.find(function(t){return t.id===id;});}
+function renderBody(){
+  var t=termOf(current);
+  var badge=t.type==='reg'?'reg':t.type;
+  var btext=t.type==='summer'?t.y+'학년 여름 계절학기':t.type==='winter'?t.y+'학년 겨울 계절학기':t.y+'학년 '+t.label.split('-')[1]+'학기';
+  document.getElementById('ctx').innerHTML=
+    '<span class="now">'+t.label+'</span><span class="badge '+badge+'">'+btext+'</span>';
+
+  var rows=document.getElementById('rows');rows.innerHTML='';
+  var data=rowsFor(current);
+  data.forEach(function(c,i){
+    var tr=document.createElement('tr');tr.className='crow';
+    tr.style.setProperty('--tc',c.tc?'var(--'+c.tc+')':'var(--ink-3)');
+    var opts=Object.keys(GP).map(function(k){return '<option'+(k===c.g?' selected':'')+'>'+k+'</option>';}).join('');
+    tr.innerHTML=
+      '<td><div class="cname">'+c.nm+'</div><div class="ctag">'+c.tag+'</div></td>'+
+      '<td class="cr">'+c.cr+'학점</td>'+
+      '<td><select data-i="'+i+'">'+opts+'</select></td>'+
+      '<td class="gp" id="gp'+i+'"></td>';
+    rows.appendChild(tr);
+  });
+  rows.querySelectorAll('select').forEach(function(s){s.onchange=calc;});
+  calc();
+}
+function calc(){
+  var data=rowsFor(current);var pts=0,cr=0;
+  document.querySelectorAll('#rows select').forEach(function(s){
+    var i=+s.dataset.i;var g=s.value;var c=data[i].cr;
+    var cell=document.getElementById('gp'+i);
+    if(GP[g]===null){cell.textContent='P';return;} // P/F 평점 제외
+    var p=GP[g];cell.textContent=p.toFixed(1);
+    pts+=p*c;cr+=c;
+  });
+  document.getElementById('semGpa').textContent=cr?(pts/cr).toFixed(2):'0.00';
+}
+renderTabs();renderBody();
+</script>
+</body>
+</html>

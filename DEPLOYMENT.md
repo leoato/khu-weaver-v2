@@ -1,4 +1,6 @@
-# KHU-Weaver v2 배포 안내
+# KHU-Weaver v3 배포 안내
+
+v3는 기존 심사용 `main` 사이트를 유지하기 위해 같은 GitHub 저장소의 `codex/kakao-login-v3` 브랜치에서 별도 Netlify 사이트로 배포합니다. 기존 Netlify 사이트의 Production branch는 변경하지 않습니다.
 
 ## 추천 방식: Netlify
 
@@ -17,7 +19,28 @@
 3. Build command는 비워두고, Publish directory는 `.`로 둡니다.
 4. 사이트 설정의 Environment variables에 `GEMINI_API_KEY`를 추가합니다.
 5. 필요하면 `GEMINI_MODEL`도 추가합니다. 기본값은 `gemini-2.5-flash`입니다.
-6. 배포된 주소에서 온보딩의 스크린샷 업로드 분석을 테스트합니다.
+6. 사용량 초과나 일시 오류 대비가 필요하면 `GEMINI_FALLBACK_MODELS`를 추가합니다. 예: `gemini-3.5-flash`
+7. 배포된 주소에서 온보딩의 스크린샷 업로드 분석을 테스트합니다.
+
+## v3 별도 사이트 만들기
+
+1. GitHub의 `codex/kakao-login-v3` 브랜치를 푸시합니다.
+2. Netlify에서 `Add new site` -> `Import an existing project`를 선택합니다.
+3. 기존과 같은 GitHub 저장소를 선택하되 Production branch를 `codex/kakao-login-v3`로 지정합니다.
+4. Build command는 비우고 Publish directory는 `.`로 둡니다.
+5. 기존 OCR 환경변수와 아래 카카오 로그인 환경변수를 새 사이트에도 각각 설정합니다.
+6. 새 Netlify 도메인이 정해지면 `KAKAO_REDIRECT_URI`와 카카오 Developers Redirect URI를 같은 주소로 맞춥니다.
+
+기존 `main` 연결 사이트는 그대로 두므로 심사위원용 주소에는 v3 변경이 반영되지 않습니다.
+
+## 카카오 로그인 환경변수
+
+- `KAKAO_REST_API_KEY`: 카카오 Developers의 REST API 키
+- `KAKAO_CLIENT_SECRET`: 카카오 로그인 Client Secret을 활성화했다면 필수
+- `KAKAO_REDIRECT_URI`: `https://<V3_NETLIFY_DOMAIN>/api/auth/kakao/callback`
+- `SESSION_SECRET`: 32자 이상의 무작위 문자열
+
+세부 설정과 검증 순서는 `KAKAO_LOGIN_SETUP.md`를 따릅니다.
 
 ## Netlify Drop만 쓸 때의 주의점
 

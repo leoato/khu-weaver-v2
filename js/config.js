@@ -17,5 +17,12 @@ window.KW_CONFIG = {
     OCR_API_ENDPOINT: "/api/ocr",
 
     // 사용 모델. 구현 시점 사용 가능 여부에 따라 최신 flash 계열로 교체 가능.
-    GEMINI_MODEL: "gemini-2.5-flash"
+    GEMINI_MODEL: "gemini-2.5-flash",
+
+    // 로컬에서 GEMINI_API_KEY로 직접 호출할 때만 쓰는 보조 모델 목록.
+    // 배포 환경의 보조 모델은 Netlify 환경변수 GEMINI_FALLBACK_MODELS에서 관리합니다.
+    GEMINI_FALLBACK_MODELS: ["gemini-3.5-flash"],
+
+    // 사용자가 한 번에 올릴 수 있는 총 스크린샷 수. 서버 요청은 8장 이하로 나누어 전송합니다.
+    OCR_MAX_FILES: 20
 };

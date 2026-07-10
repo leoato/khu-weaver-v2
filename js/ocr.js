@@ -13,13 +13,13 @@ window.KW_OCR = (function () {
     "use strict";
 
     var GRADE_KEYS = ["A+", "A0", "A-", "B+", "B0", "B-", "C+", "C0", "C-", "D+", "D0", "F", "P", "NP"];
-    var PHRASES = ["시간표를 읽는 중…", "과목을 대조하는 중…", "성적을 엮는 중…", "빌드를 짜는 중…"];
-    var MAX_FILES = 8;
+    var PHRASES = ["성적표를 읽는 중…", "과목을 대조하는 중…", "성적을 엮는 중…", "빌드를 짜는 중…"];
+    var BATCH_SIZE = 8;
     var LONG_EDGE = 2048;
     var JPEG_QUALITY_DEFAULT = 0.85;
     var JPEG_QUALITY_FALLBACK = 0.8;
-    var MAX_TOTAL_BYTES = 20 * 1024 * 1024; // Gemini 요청 총 용량 상한(대략치)
-    var PER_FILE_BUDGET = Math.floor(MAX_TOTAL_BYTES / MAX_FILES); // 8장 업로드 기준 1장당 예산
+    var MAX_REQUEST_BYTES = 20 * 1024 * 1024; // Gemini 요청 1회 총 용량 상한(대략치)
+    var PER_FILE_BUDGET = Math.floor(MAX_REQUEST_BYTES / BATCH_SIZE); // 8장 배치 기준 1장당 예산
 
     var opts = null;      // { getProfile, onApply, onBack, onFallbackB }
     var files = [];       // [{ name, dataUrl, base64, mime }]
@@ -31,7 +31,21 @@ window.KW_OCR = (function () {
     function apiKey() { return (cfg().GEMINI_API_KEY || "").trim(); }
     function apiEndpoint() { return (cfg().OCR_API_ENDPOINT || "/api/ocr").trim(); }
     function modelName() { return cfg().GEMINI_MODEL || "gemini-2.5-flash"; }
+    function maxFiles() { return Math.max(BATCH_SIZE, parseInt(cfg().OCR_MAX_FILES || 20, 10) || 20); }
     function isEnabled() { return apiKey().length > 0 || apiEndpoint().length > 0; }
+
+    function fallbackModels() {
+        var raw = cfg().GEMINI_FALLBACK_MODELS || [];
+        if (typeof raw === "string") raw = raw.split(",");
+        if (!Array.isArray(raw)) raw = [];
+        var seen = {};
+        return [modelName()].concat(raw).map(function (m) { return String(m || "").trim(); })
+            .filter(function (m) {
+                if (!m || seen[m]) return false;
+                seen[m] = true;
+                return true;
+            }).slice(0, 2);
+    }
 
     function root() { return document.getElementById("ob-ocr-root"); }
     function norm(s) { return (s == null ? "" : String(s)).replace(/[\s()\[\]{}·.,/\\\-_:;'"]+/g, "").toLowerCase(); }
@@ -152,16 +166,38 @@ window.KW_OCR = (function () {
             if (data && Array.isArray(data.courses)) data = data.courses;
             else throw new Error("형식이 올바르지 않아요");
         }
+        if (data.length === 0) throw new Error("과목을 하나도 찾지 못했어요");
         return data;
+    }
+
+    function ocrGenerationConfig() {
+        return {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        name: { type: "STRING" },
+                        code: { type: "STRING" },
+                        credits: { type: "NUMBER" },
+                        grade: { type: "STRING" },
+                        semester: { type: "STRING" }
+                    },
+                    required: ["name"]
+                }
+            }
+        };
     }
 
     function buildPrompt() {
         var lines = [
-            "다음 이미지는 경희대학교 에브리타임/인포21의 수강·성적 스크린샷이다.",
+            "다음 이미지는 경희대학교 에브리타임 학점계산기 또는 인포21 성적조회 화면의 수강·성적 스크린샷이다.",
             "표에 보이는 각 과목에 대해 아래 필드를 추출해 JSON 배열로만 응답하라. 설명이나 마크다운 없이 JSON만 출력한다.",
             "필드: name(과목명, 필수), code(학수번호, 있으면), credits(학점 숫자), grade(성적 문자: A+/A0/A-/B+/B0/B-/C+/C0/C-/D+/D0/F/P/NP 중 하나, 있으면), semester(수강학기, 있으면).",
             '출력 예시: [{"name":"회로이론","code":"EE202","credits":3,"grade":"A0","semester":"2-1"},{"name":"미분적분학","code":"AMTH1009","credits":3,"grade":"B+"}]',
-            "값이 없으면 해당 키를 생략한다. 성적이 보이지 않으면 grade를 생략한다."
+            "값이 없으면 해당 키를 생략한다. 성적이 보이지 않으면 grade를 생략한다.",
+            "과목명, 학수번호, 학점, 등급이 보이는 행만 추출하고 표 머리글·평점평균·총평점·석차 같은 요약 행은 제외한다."
         ];
         if (curriculum && curriculum.length) {
             var list = curriculum.map(function (c) { return c.code + " " + c.name; }).join(", ");
@@ -174,27 +210,90 @@ window.KW_OCR = (function () {
         return lines.join("\n");
     }
 
-    function callGemini() {
+    function callGeminiBatch(batchFiles) {
         var parts = [{ text: buildPrompt() }];
-        files.forEach(function (f) { parts.push({ inline_data: { mime_type: f.mime, data: f.base64 } }); });
-        var body = { contents: [{ parts: parts }], generationConfig: { responseMimeType: "application/json" } };
+        batchFiles.forEach(function (f) { parts.push({ inline_data: { mime_type: f.mime, data: f.base64 } }); });
+        var body = { contents: [{ parts: parts }], generationConfig: ocrGenerationConfig() };
         var key = apiKey();
-        var url = "";
         if (key) {
-            url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName() +
-                  ":generateContent?key=" + encodeURIComponent(key);
-        } else {
-            url = apiEndpoint();
-            body.model = modelName();
+            return callGeminiDirectWithFallback(body);
         }
+        body.model = modelName();
+        return fetchGemini(apiEndpoint(), body);
+    }
+
+    function callGeminiDirectWithFallback(body) {
+        var models = fallbackModels();
+        function run(i, lastErr) {
+            if (i >= models.length) return Promise.reject(lastErr || new Error("Gemini 요청에 실패했어요"));
+            var url = "https://generativelanguage.googleapis.com/v1beta/models/" + models[i] +
+                ":generateContent?key=" + encodeURIComponent(apiKey());
+            return fetchGemini(url, body).catch(function (err) {
+                if (i < models.length - 1 && isRetryableOcrError(err)) return run(i + 1, err);
+                throw err;
+            });
+        }
+        return run(0);
+    }
+
+    function fetchGemini(url, body) {
         return fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
         }).then(function (r) {
-            if (!r.ok) throw new Error("서버 응답 오류 (HTTP " + r.status + ")");
+            if (!r.ok) {
+                return r.json().catch(function () { return {}; }).then(function (payload) {
+                    var err = new Error(errorMessageForStatus(r.status, payload));
+                    err.status = r.status;
+                    throw err;
+                });
+            }
             return r.json();
         }).then(parseGemini);
+    }
+
+    function errorMessageForStatus(status, payload) {
+        if (status === 404) return "선택한 분석 모델을 사용할 수 없어요. 보조 모델로 다시 시도합니다.";
+        if (status === 429) return "오늘 분석 사용량이 잠시 가득 찼어요. 잠시 후 다시 시도하거나 직접 선택으로 이어가세요.";
+        if (status >= 500) return "분석 서버가 잠시 불안정해요. 다시 시도하거나 직접 선택으로 이어가세요.";
+        return (payload && payload.error) || ("서버 응답 오류 (HTTP " + status + ")");
+    }
+
+    function isRetryableOcrError(err) {
+        return err && (err.status === 404 || err.status === 429 || err.status >= 500 || /응답이 비어|형식이 올바르지|JSON|과목을 하나도/.test(err.message || ""));
+    }
+
+    function callGemini() {
+        var batches = chunk(files, BATCH_SIZE);
+        var all = [];
+        var chain = Promise.resolve();
+        batches.forEach(function (batch, i) {
+            chain = chain.then(function () {
+                updateProgress(i, batches.length);
+                return callGeminiBatch(batch).then(function (items) {
+                    all = all.concat(items || []);
+                    updateProgress(i + 1, batches.length);
+                });
+            });
+        });
+        return chain.then(function () { return dedupeItems(all); });
+    }
+
+    function chunk(arr, size) {
+        var out = [];
+        for (var i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+    }
+
+    function dedupeItems(items) {
+        var seen = {};
+        return (items || []).filter(function (it) {
+            var key = (it.code ? "c:" + String(it.code).toLowerCase() : "n:" + norm(it.name)) + ":" + normGrade(it.grade || "");
+            if (!key || seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
     }
 
     // ---- 이미지 리사이즈 → base64 (긴 변 2048px, jpeg 0.85 · 용량 초과 시 0.8) --
@@ -240,13 +339,14 @@ window.KW_OCR = (function () {
     function renderUpload() {
         stopTimers();
         root().innerHTML =
-            '<div class="ocr-head"><div class="ocr-title">📷 에타 성적 스크린샷</div>' +
-            '<div class="ocr-sub">캡쳐 1~8장을 올리면 과목·성적을 한 번에 채워요.</div></div>' +
+            '<div class="ocr-head"><div class="ocr-title">📷 에타/인포21 성적 스크린샷</div>' +
+            '<div class="ocr-sub">둘 중 하나만 올려도 됩니다. 과목명·학점·등급이 보이는 캡쳐를 최대 ' + maxFiles() + '장까지 넣어주세요.</div></div>' +
+            '<button class="ocr-guide-btn" id="ocr-guide-open" type="button">어떤 사진을 올리나요?</button>' +
             '<label class="ocr-drop" id="ocr-drop">' +
                 '<input type="file" id="ocr-file" accept="image/png,image/jpeg" multiple hidden>' +
                 '<div class="ocr-drop-ic">🧵</div>' +
                 '<div class="ocr-drop-t">여기로 드래그하거나 클릭해서 선택</div>' +
-                '<div class="ocr-drop-d">JPG · PNG · 최대 8장</div>' +
+                '<div class="ocr-drop-d">JPG · PNG · 최대 ' + maxFiles() + '장 · 서버에는 8장씩 나눠 분석</div>' +
             '</label>' +
             '<div class="ocr-msg" id="ocr-msg"></div>' +
             '<div class="ocr-thumbs" id="ocr-thumbs"></div>' +
@@ -271,6 +371,7 @@ window.KW_OCR = (function () {
         });
         document.getElementById("ocr-back").addEventListener("click", function () { if (opts.onBack) opts.onBack(); });
         document.getElementById("ocr-analyze").addEventListener("click", startAnalyze);
+        document.getElementById("ocr-guide-open").addEventListener("click", function () { openCaptureGuide("eta"); });
         renderThumbs();
     }
 
@@ -278,8 +379,8 @@ window.KW_OCR = (function () {
 
     function addFiles(fileList) {
         var arr = Array.prototype.slice.call(fileList || []).filter(function (f) { return /image\/(png|jpe?g)/.test(f.type); });
-        var room = MAX_FILES - files.length;
-        if (arr.length > room) { msg("최대 8장까지만 올릴 수 있어요. " + Math.max(0, room) + "장만 추가했어요."); arr = arr.slice(0, Math.max(0, room)); }
+        var room = maxFiles() - files.length;
+        if (arr.length > room) { msg("최대 " + maxFiles() + "장까지만 올릴 수 있어요. " + Math.max(0, room) + "장만 추가했어요."); arr = arr.slice(0, Math.max(0, room)); }
         else msg("");
         var pending = arr.length;
         if (!pending) return;
@@ -309,19 +410,94 @@ window.KW_OCR = (function () {
         }
     }
 
+    function openCaptureGuide(tab) {
+        closeCaptureGuide();
+        var guide = document.createElement("div");
+        guide.className = "ocr-guide-modal";
+        guide.id = "ocr-guide-modal";
+        guide.innerHTML =
+            '<div class="ocr-guide-card" role="dialog" aria-modal="true" aria-label="스크린샷 안내">' +
+                '<div class="ocr-guide-top">' +
+                    '<div><div class="ocr-guide-title">어떤 화면을 캡쳐하면 되나요?</div>' +
+                    '<div class="ocr-guide-sub">에타 또는 인포21 중 하나만 준비하면 됩니다.</div></div>' +
+                    '<button class="ocr-guide-close" id="ocr-guide-close" type="button" aria-label="닫기">✕</button>' +
+                '</div>' +
+                '<div class="ocr-guide-tabs">' +
+                    '<button class="ocr-guide-tab" data-guide="eta" type="button">에타</button>' +
+                    '<button class="ocr-guide-tab" data-guide="info21" type="button">인포21</button>' +
+                '</div>' +
+                '<div id="ocr-guide-body"></div>' +
+            '</div>';
+        document.body.appendChild(guide);
+        guide.addEventListener("click", function (e) { if (e.target === guide) closeCaptureGuide(); });
+        document.getElementById("ocr-guide-close").addEventListener("click", closeCaptureGuide);
+        guide.querySelectorAll(".ocr-guide-tab").forEach(function (b) {
+            b.addEventListener("click", function () { renderCaptureGuide(b.dataset.guide); });
+        });
+        renderCaptureGuide(tab || "eta");
+    }
+
+    function closeCaptureGuide() {
+        var old = document.getElementById("ocr-guide-modal");
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+    }
+
+    function renderCaptureGuide(kind) {
+        var modal = document.getElementById("ocr-guide-modal");
+        var body = document.getElementById("ocr-guide-body");
+        if (!modal || !body) return;
+        modal.querySelectorAll(".ocr-guide-tab").forEach(function (b) {
+            b.classList.toggle("active", b.dataset.guide === kind);
+        });
+
+        if (kind === "info21") {
+            body.innerHTML =
+                '<div class="ocr-guide-stage info21">' +
+                    '<div class="mock-info21-title">2025 / 2학기</div>' +
+                    '<div class="mock-info21-summary"><span>총과목<br><b>6</b></span><span>취득학점<br><b>15</b></span><span>평점평균<br><b>4.06</b></span></div>' +
+                    '<div class="mock-table">' +
+                        '<div class="mock-row head"><span>강좌코드</span><span>과목명</span><span>학점</span><span>등급</span></div>' +
+                        '<div class="mock-row"><span>SWCON104</span><span>웹/파이썬프로그래밍</span><span>3</span><span>A+</span></div>' +
+                        '<div class="mock-row"><span>AMTH1001</span><span>미분방정식</span><span>3</span><span>A-</span></div>' +
+                        '<div class="mock-row"><span>APHY1003</span><span>물리학및실험2</span><span>3</span><span>A0</span></div>' +
+                    '</div>' +
+                    '<div class="ocr-crop-box"></div>' +
+                '</div>' +
+                '<ol class="ocr-guide-steps"><li>인포21 성적조회에서 학기별 상세 표를 엽니다.</li><li>과목명, 학점, 등급이 보이는 표 영역을 캡쳐합니다.</li><li>상단 요약만 캡쳐하지 말고 과목 행까지 포함해주세요.</li></ol>';
+        } else {
+            body.innerHTML =
+                '<div class="ocr-guide-stage eta">' +
+                    '<div class="mock-phone-bar">00:04 <span>64%</span></div>' +
+                    '<div class="mock-eta-title">학점계산기</div>' +
+                    '<div class="mock-eta-tabs">1학년 1학기&nbsp;&nbsp; 1학년 2학기&nbsp;&nbsp; 2학년 1학기</div>' +
+                    '<div class="mock-eta-chart"><span>A+ 33%</span><span>B+ 22%</span><span>A0 22%</span></div>' +
+                    '<div class="mock-eta-sem">1학년 1학기 <b>평점 3.48 · 취득 18</b></div>' +
+                    '<div class="mock-table eta-table">' +
+                        '<div class="mock-row head"><span>과목명</span><span>학점</span><span>성적</span></div>' +
+                        '<div class="mock-row"><span>미분적분학</span><span>3</span><span>B-</span></div>' +
+                        '<div class="mock-row"><span>선형대수</span><span>3</span><span>C+</span></div>' +
+                        '<div class="mock-row"><span>물리학및실험1</span><span>3</span><span>A+</span></div>' +
+                    '</div>' +
+                    '<div class="ocr-crop-box"></div>' +
+                '</div>' +
+                '<ol class="ocr-guide-steps"><li>에타 학점계산기에서 학기 탭을 엽니다.</li><li>과목명, 학점, 성적이 보이는 표 영역을 캡쳐합니다.</li><li>여러 학기는 여러 장으로 나눠 올려도 됩니다.</li></ol>';
+        }
+    }
+
     // =====================================================================
     // UI: 직조 애니메이션(분석 중)
     // =====================================================================
     function renderWeaving() {
         stopTimers();
         var warps = "", wefts = "";
+        var totalBatches = Math.max(1, chunk(files, BATCH_SIZE).length);
         for (var i = 0; i < 6; i++) warps += '<span class="warp" style="--i:' + i + '"></span>';
         for (var j = 0; j < 4; j++) wefts += '<span class="weft" style="--j:' + j + '"></span>';
         root().innerHTML =
             '<div class="ocr-weave">' +
                 '<div class="ocr-loom" aria-hidden="true">' + warps + wefts + '</div>' +
                 '<div class="ocr-phrase" id="ocr-phrase">' + PHRASES[0] + '</div>' +
-                '<div class="ocr-prog" id="ocr-prog">0/' + files.length + '장 분석 중…</div>' +
+                '<div class="ocr-prog" id="ocr-prog">0/' + totalBatches + '묶음 분석 중…</div>' +
             '</div>';
         var pi = 0;
         phraseTimer = setInterval(function () {
@@ -331,8 +507,13 @@ window.KW_OCR = (function () {
         }, 1400);
         var k = 0;
         progTimer = setInterval(function () {
-            if (k < files.length) { k++; var el = document.getElementById("ocr-prog"); if (el) el.textContent = k + "/" + files.length + "장 분석 중…"; }
+            if (k < totalBatches) { k++; updateProgress(k, totalBatches); }
         }, 550);
+    }
+
+    function updateProgress(done, total) {
+        var el = document.getElementById("ocr-prog");
+        if (el) el.textContent = Math.min(done, total) + "/" + total + "묶음 분석 중…";
     }
 
     function startAnalyze() {

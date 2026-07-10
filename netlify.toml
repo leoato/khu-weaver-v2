@@ -7,5 +7,72 @@
   to = "/.netlify/functions/ocr"
   status = 200
 
+[[redirects]]
+  from = "/api/auth/kakao/start"
+  to = "/.netlify/functions/kakao-auth?action=start"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/kakao/callback"
+  to = "/.netlify/functions/kakao-auth?action=callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/session"
+  to = "/.netlify/functions/kakao-auth?action=session"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/logout"
+  to = "/.netlify/functions/kakao-auth?action=logout"
+  status = 200
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/tests/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/tools/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/*.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/.env*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/.gitignore"
+  to = "/404.html"
+  status = 404
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
 [template.environment]
   GEMINI_API_KEY = "Gemini API key used only by the Netlify OCR function"
+  GEMINI_FALLBACK_MODELS = "Optional comma-separated fallback models for OCR retries"
+  KAKAO_REST_API_KEY = "Kakao REST API key used only by the auth function"
+  KAKAO_CLIENT_SECRET = "Optional Kakao Login client secret"
+  KAKAO_REDIRECT_URI = "Exact Kakao callback URL for this site"
+  SESSION_SECRET = "Random secret of at least 32 characters for signing login sessions"
