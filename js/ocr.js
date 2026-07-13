@@ -25,6 +25,7 @@ window.KW_OCR = (function () {
     var files = [];       // [{ name, dataUrl, base64, mime }]
     var curriculum = [];  // 현재 프로필의 전공 과목 목록
     var phraseTimer = null, progTimer = null;
+    var guideTimer = null, guideTimeouts = [], guideIdx = 0; // 캡쳐 안내 애니메이션(U-2 업그레이드)
 
     // ---- 설정 --------------------------------------------------------------
     function cfg() { return window.KW_CONFIG || {}; }
@@ -438,6 +439,7 @@ window.KW_OCR = (function () {
     }
 
     function closeCaptureGuide() {
+        stopGuideLoop();
         var old = document.getElementById("ocr-guide-modal");
         if (old && old.parentNode) old.parentNode.removeChild(old);
     }
@@ -449,39 +451,322 @@ window.KW_OCR = (function () {
         modal.querySelectorAll(".ocr-guide-tab").forEach(function (b) {
             b.classList.toggle("active", b.dataset.guide === kind);
         });
+        stopGuideLoop();
+        body.innerHTML = '<div class="ocr-guide-stage">' + (kind === "info21" ? ogInfo21Stage() : ogEtaStage()) + '</div>';
+        startGuideLoop(kind);
+    }
 
-        if (kind === "info21") {
-            body.innerHTML =
-                '<div class="ocr-guide-stage info21">' +
-                    '<div class="mock-info21-title">2025 / 2학기</div>' +
-                    '<div class="mock-info21-summary"><span>총과목<br><b>6</b></span><span>취득학점<br><b>15</b></span><span>평점평균<br><b>4.06</b></span></div>' +
-                    '<div class="mock-table">' +
-                        '<div class="mock-row head"><span>강좌코드</span><span>과목명</span><span>학점</span><span>등급</span></div>' +
-                        '<div class="mock-row"><span>SWCON104</span><span>웹/파이썬프로그래밍</span><span>3</span><span>A+</span></div>' +
-                        '<div class="mock-row"><span>AMTH1001</span><span>미분방정식</span><span>3</span><span>A-</span></div>' +
-                        '<div class="mock-row"><span>APHY1003</span><span>물리학및실험2</span><span>3</span><span>A0</span></div>' +
+    // =====================================================================
+    // UI: 캡쳐 안내 애니메이션 — 실제 화면 캡쳐본 기준 재현(개인정보는 가림/대체)
+    //  - 에타: 다크 테마 폰 목업. 시간표 탭 → 설정 → 이미지로 저장(크롭 불필요)
+    //  - 인포21: 데스크톱 브라우저 목업. 수업/성적 → 수강신청내역 → 표 캡쳐(크롭+플래시)
+    // =====================================================================
+    function ogEtaStage() {
+        return (
+            '<div class="og-wrap">' +
+                '<div class="og-phone"><div class="og-screen dark" id="og-screen">' +
+                    '<div class="mock-phone-bar">9:41 <span>100%</span></div>' +
+                    '<div class="og-body og-eta-body">' +
+                        '<div class="og-eta-home" id="og-home">' +
+                            '<div class="og-eta-topicons"><span>🔍</span><span>🔔</span><span>👤</span></div>' +
+                            '<div class="og-eta-h1">경희대</div>' +
+                            '<div class="og-eta-banners"><span></span><span></span></div>' +
+                            '<div class="og-eta-shortcuts"><span></span><span></span><span></span><span></span><span></span></div>' +
+                        '</div>' +
+                        '<div class="og-eta-tl" id="og-tl">' +
+                            '<div class="og-tl-head">' +
+                                '<div><div class="og-tl-sub">2026년 1학기</div><div class="og-tl-title">내 시간표</div></div>' +
+                                '<div class="og-tl-ic" id="og-gear">⚙</div>' +
+                            '</div>' +
+                            '<div class="og-tl-grid">' +
+                                '<span class="og-day">월</span><span class="og-day">화</span><span class="og-day">수</span><span class="og-day">목</span><span class="og-day">금</span><span class="og-day">토</span>' +
+                                '<span class="og-c" style="grid-column:1;grid-row:2/4;background:hsl(6,45%,42%)">전자기학</span>' +
+                                '<span class="og-c" style="grid-column:3;grid-row:2/4;background:hsl(6,45%,42%)">전자기학</span>' +
+                                '<span class="og-c" style="grid-column:2;grid-row:3/5;background:hsl(28,55%,42%)">신호와시스템</span>' +
+                                '<span class="og-c" style="grid-column:4;grid-row:3/5;background:hsl(28,55%,42%)">신호와시스템</span>' +
+                                '<span class="og-c" style="grid-column:1;grid-row:5/6;background:hsl(43,45%,40%)">논리회로</span>' +
+                                '<span class="og-c" style="grid-column:3;grid-row:5/6;background:hsl(43,45%,40%)">논리회로</span>' +
+                            '</div>' +
+                        '</div>' +
                     '</div>' +
-                    '<div class="ocr-crop-box"></div>' +
-                '</div>' +
-                '<ol class="ocr-guide-steps"><li>인포21 성적조회에서 학기별 상세 표를 엽니다.</li><li>과목명, 학점, 등급이 보이는 표 영역을 캡쳐합니다.</li><li>상단 요약만 캡쳐하지 말고 과목 행까지 포함해주세요.</li></ol>';
-        } else {
-            body.innerHTML =
-                '<div class="ocr-guide-stage eta">' +
-                    '<div class="mock-phone-bar">00:04 <span>64%</span></div>' +
-                    '<div class="mock-eta-title">학점계산기</div>' +
-                    '<div class="mock-eta-tabs">1학년 1학기&nbsp;&nbsp; 1학년 2학기&nbsp;&nbsp; 2학년 1학기</div>' +
-                    '<div class="mock-eta-chart"><span>A+ 33%</span><span>B+ 22%</span><span>A0 22%</span></div>' +
-                    '<div class="mock-eta-sem">1학년 1학기 <b>평점 3.48 · 취득 18</b></div>' +
-                    '<div class="mock-table eta-table">' +
-                        '<div class="mock-row head"><span>과목명</span><span>학점</span><span>성적</span></div>' +
-                        '<div class="mock-row"><span>미분적분학</span><span>3</span><span>B-</span></div>' +
-                        '<div class="mock-row"><span>선형대수</span><span>3</span><span>C+</span></div>' +
-                        '<div class="mock-row"><span>물리학및실험1</span><span>3</span><span>A+</span></div>' +
+                    '<div class="og-tabbar dark">' +
+                        '<div class="og-tab">홈</div><div class="og-tab" id="og-tab-tl">시간표</div>' +
+                        '<div class="og-tab">게시판</div><div class="og-tab">채팅</div><div class="og-tab">혜택</div>' +
                     '</div>' +
-                    '<div class="ocr-crop-box"></div>' +
+                    '<div class="og-arrow" id="og-arrow">▲</div>' +
+                    '<div class="og-sheet" id="og-sheet">' +
+                        '<div class="og-sheet-row">✏️&nbsp; 이름 변경</div>' +
+                        '<div class="og-sheet-row">🔒&nbsp; 공개 범위 변경</div>' +
+                        '<div class="og-sheet-row">🎨&nbsp; 테마 및 스타일 변경</div>' +
+                        '<div class="og-sheet-row" id="og-save-row">⬇️&nbsp; 이미지로 저장</div>' +
+                        '<div class="og-sheet-row">🔗&nbsp; URL 복사</div>' +
+                        '<div class="og-sheet-row">📤&nbsp; 시간표 링크 공유</div>' +
+                        '<div class="og-sheet-row">🗑️&nbsp; 삭제</div>' +
+                    '</div>' +
+                    '<div class="og-done" id="og-done">' +
+                        '<div class="og-done-check">✓</div>' +
+                        '<div class="og-done-t">이미지 저장 완료</div>' +
+                        '<div class="og-done-d">사진 앱에 저장된 시간표를 그대로 업로드하면 돼요</div>' +
+                    '</div>' +
+                    '<div class="og-finger" id="og-finger"></div>' +
+                '</div></div>' +
+                ogSteps([
+                    ["에타 앱 → 하단 <span class=\"og-key\">시간표</span> 탭", "홈 화면 아래쪽 탭바에서 시간표를 눌러요."],
+                    ["오른쪽 위 <span class=\"og-key\">⚙ 설정</span> 아이콘", "시간표 화면 상단의 톱니바퀴 아이콘을 누릅니다."],
+                    ["<span class=\"og-key\">이미지로 저장</span> 선택", "아래에서 올라오는 메뉴에서 이미지로 저장을 누르세요."],
+                    ["저장된 이미지를 업로드", "사진 앱에 저장된 시간표 이미지를 그대로 올리면 끝!"]
+                ]) +
+            '</div>'
+        );
+    }
+
+    function ogInfo21Stage() {
+        return (
+            '<div class="og-browser-wrap">' +
+                '<div class="og-browser">' +
+                    '<div class="og-browser-bar"><span class="og-dot"></span><span class="og-dot"></span><span class="og-dot"></span><span class="og-browser-url">🔒 portal.khu.ac.kr</span></div>' +
+                    '<div class="og-screen wide" id="og-screen">' +
+                        '<div class="og-portal-top">' +
+                            '<span class="og-portal-logo">경희대학교 포털</span>' +
+                            '<span class="og-portal-user"><span class="og-blur-av">🙈</span><span class="og-blur-name">◼◼◼님 (가림)</span></span>' +
+                        '</div>' +
+                        '<div class="og-portal-nav">' +
+                            '<span>학적</span><span id="og-entry">수업/성적</span><span>등록/장학</span><span>대학생활</span><span>커뮤니티</span>' +
+                        '</div>' +
+                        '<div class="og-portal-body" id="og-portal-body">' +
+                            '<div class="og-ph-card"></div><div class="og-ph-card"></div><div class="og-ph-card"></div>' +
+                        '</div>' +
+                        '<div class="og-menu og-menu-portal" id="og-menu">' +
+                            '<div class="og-menu-col"><b>수업</b><div class="og-menu-row">교육과정조회</div><div class="og-menu-row">종합강의시간표</div></div>' +
+                            '<div class="og-menu-col"><b>수강</b><div class="og-menu-row" id="og-menu-item">수강신청내역</div><div class="og-menu-row">수강희망과목신청내역</div></div>' +
+                            '<div class="og-menu-col"><b>성적</b><div class="og-menu-row">금학기성적조회</div><div class="og-menu-row">전체성적조회</div></div>' +
+                        '</div>' +
+                        '<div class="og-portal-table" id="og-target">' +
+                            '<div class="og-pt-title">수강신청내역</div>' +
+                            '<div class="mock-row head"><span>이수구분</span><span>교과목명</span><span>학점</span><span>담당교수</span></div>' +
+                            '<div class="mock-row"><span>전공필수</span><span>전자기학</span><span>3</span><span>홍길동</span></div>' +
+                            '<div class="mock-row"><span>전공필수</span><span>회로이론</span><span>3</span><span>김철수</span></div>' +
+                            '<div class="mock-row"><span>전공필수</span><span>논리회로</span><span>3</span><span>이영희</span></div>' +
+                            '<div class="mock-row"><span>전공기초</span><span>객체지향프로그래밍및실습</span><span>3</span><span>박민수</span></div>' +
+                        '</div>' +
+                        '<div class="ocr-crop-box" id="og-crop"></div>' +
+                        '<div class="og-flash" id="og-flash"></div>' +
+                        '<div class="og-done" id="og-done">' +
+                            '<div class="og-done-check">✓</div>' +
+                            '<div class="og-done-t">캡쳐 완료</div>' +
+                            '<div class="og-done-d">과목이 다 보이게 캡쳐했다면 완료!</div>' +
+                        '</div>' +
+                        '<div class="og-finger" id="og-finger"></div>' +
+                    '</div>' +
                 '</div>' +
-                '<ol class="ocr-guide-steps"><li>에타 학점계산기에서 학기 탭을 엽니다.</li><li>과목명, 학점, 성적이 보이는 표 영역을 캡쳐합니다.</li><li>여러 학기는 여러 장으로 나눠 올려도 됩니다.</li></ol>';
+                ogSteps([
+                    ["인포21 로그인 → <span class=\"og-key\">수업/성적</span> 클릭", "상단 메뉴에서 수업/성적을 눌러요. (내 사진·학번은 가리고 캡쳐하세요)"],
+                    ["<span class=\"og-key\">수강신청내역</span> 클릭", "펼쳐진 메뉴 중 '수강' 칸의 수강신청내역을 누릅니다."],
+                    ["학년도·학기 선택 → 표 캡쳐", "과목명·학점이 보이는 표 전체가 나오면 화면을 캡쳐하세요."],
+                    ["과목이 다 보이게", "스크롤해서라도 과목 행이 전부 포함되게 캡쳐해주세요."]
+                ], "grid2") +
+            '</div>'
+        );
+    }
+
+    function ogSteps(items, extraClass) {
+        var html = '<div class="og-steps' + (extraClass ? " " + extraClass : "") + '" id="og-steps">';
+        for (var i = 0; i < items.length; i++) {
+            html += '<div class="og-step"><div class="og-num">' + (i + 1) + '</div><div><b>' + items[i][0] + '</b><p>' + items[i][1] + '</p></div></div>';
         }
+        html += '<div class="og-done-tag" id="og-done-tag">✓ 이렇게 캡쳐한 사진을 그대로 올리면 끝이에요</div></div>';
+        return html;
+    }
+
+    function ogStepsOn(idx, total) {
+        var box = document.getElementById("og-steps");
+        if (!box) return;
+        var steps = box.querySelectorAll(".og-step");
+        for (var i = 0; i < steps.length; i++) steps[i].classList.toggle("on", i === idx);
+        var tag = document.getElementById("og-done-tag");
+        if (tag) tag.classList.toggle("show", idx === total - 1);
+    }
+
+    function ogFingerAt(target) {
+        var finger = document.getElementById("og-finger");
+        var screen = document.getElementById("og-screen");
+        if (!finger) return;
+        if (!target || !screen) { finger.classList.remove("tap"); return; }
+        var r = target.getBoundingClientRect(), s = screen.getBoundingClientRect();
+        finger.style.left = (r.left - s.left + r.width / 2 - 14) + "px";
+        finger.style.top = (r.top - s.top + r.height / 2 - 14) + "px";
+        finger.classList.add("tap");
+    }
+
+    function ogArrowAt(target) {
+        var arrow = document.getElementById("og-arrow");
+        var screen = document.getElementById("og-screen");
+        if (!arrow) return;
+        if (!target || !screen) { arrow.classList.remove("show"); return; }
+        var r = target.getBoundingClientRect(), s = screen.getBoundingClientRect();
+        arrow.style.left = (r.left - s.left + r.width / 2 - 7) + "px";
+        arrow.style.top = (r.top - s.top - 18) + "px";
+        arrow.classList.add("show");
+    }
+
+    function ogCropAt(target) {
+        var crop = document.getElementById("og-crop");
+        var screen = document.getElementById("og-screen");
+        if (!crop || !target || !screen) return;
+        var r = target.getBoundingClientRect(), s = screen.getBoundingClientRect();
+        crop.style.left = (r.left - s.left - 6) + "px";
+        crop.style.top = (r.top - s.top - 6) + "px";
+        crop.style.width = (r.width + 12) + "px";
+        crop.style.height = (r.height + 12) + "px";
+        crop.classList.add("show");
+    }
+
+    // ---- 에타: 홈 → 시간표 → 설정 시트 → 이미지로 저장(크롭 없음) --------------
+    function ogEtaReset() {
+        var home = document.getElementById("og-home");
+        var tl = document.getElementById("og-tl");
+        var tab = document.getElementById("og-tab-tl");
+        var gear = document.getElementById("og-gear");
+        var sheet = document.getElementById("og-sheet");
+        var save = document.getElementById("og-save-row");
+        var done = document.getElementById("og-done");
+        if (home) home.style.display = "";
+        if (tl) tl.style.display = "none";
+        if (tab) tab.classList.remove("hot", "active");
+        if (gear) gear.classList.remove("hot");
+        if (sheet) sheet.classList.remove("open");
+        if (save) save.classList.remove("hot");
+        if (done) done.classList.remove("show");
+        ogFingerAt(null);
+        ogArrowAt(null);
+    }
+    function ogEtaShowTl() {
+        var home = document.getElementById("og-home"), tl = document.getElementById("og-tl"), tab = document.getElementById("og-tab-tl");
+        if (home) home.style.display = "none";
+        if (tl) tl.style.display = "block";
+        if (tab) tab.classList.add("active");
+    }
+
+    var OG_ETA_SCENES = [
+        function () { // 1. 홈 화면 → 하단 시간표 탭
+            ogEtaReset(); ogStepsOn(0, OG_ETA_SCENES.length);
+            gDelay(function () {
+                var tab = document.getElementById("og-tab-tl");
+                if (tab) tab.classList.add("hot");
+                ogFingerAt(tab);
+                ogArrowAt(tab);
+            }, 260);
+        },
+        function () { // 2. 시간표 화면 → 설정(⚙) 아이콘
+            ogEtaReset(); ogStepsOn(1, OG_ETA_SCENES.length);
+            ogEtaShowTl();
+            gDelay(function () {
+                var gear = document.getElementById("og-gear");
+                if (gear) gear.classList.add("hot");
+                ogFingerAt(gear);
+            }, 320);
+        },
+        function () { // 3. 설정 시트 열림 → 이미지로 저장
+            ogEtaReset(); ogStepsOn(2, OG_ETA_SCENES.length);
+            ogEtaShowTl();
+            var sheet = document.getElementById("og-sheet");
+            if (sheet) sheet.classList.add("open");
+            gDelay(function () {
+                var save = document.getElementById("og-save-row");
+                if (save) save.classList.add("hot");
+                ogFingerAt(save);
+            }, 420);
+        },
+        function () { // 4. 완료
+            ogEtaReset(); ogStepsOn(3, OG_ETA_SCENES.length);
+            ogEtaShowTl();
+            var done = document.getElementById("og-done");
+            if (done) done.classList.add("show");
+        }
+    ];
+
+    // ---- 인포21: 상단메뉴 → 메가메뉴 → 수강신청내역 표 → 캡쳐(크롭+플래시) -----
+    function ogInfo21Reset() {
+        var menu = document.getElementById("og-menu");
+        var entry = document.getElementById("og-entry");
+        var item = document.getElementById("og-menu-item");
+        var crop = document.getElementById("og-crop");
+        var flash = document.getElementById("og-flash");
+        var done = document.getElementById("og-done");
+        var pbody = document.getElementById("og-portal-body");
+        var table = document.getElementById("og-target");
+        if (menu) menu.classList.remove("open");
+        if (entry) entry.classList.remove("hot");
+        if (item) item.classList.remove("hot");
+        if (crop) crop.classList.remove("show");
+        if (flash) flash.classList.remove("flash");
+        if (done) done.classList.remove("show");
+        if (pbody) pbody.style.display = "";
+        if (table) table.style.display = "none";
+        ogFingerAt(null);
+    }
+    function ogInfo21ShowTable() {
+        var pbody = document.getElementById("og-portal-body");
+        var table = document.getElementById("og-target");
+        if (pbody) pbody.style.display = "none";
+        if (table) table.style.display = "block";
+    }
+
+    var OG_INFO21_SCENES = [
+        function () { // 1. 진입점(수업/성적) 탭
+            ogInfo21Reset(); ogStepsOn(0, OG_INFO21_SCENES.length);
+            gDelay(function () {
+                var entry = document.getElementById("og-entry");
+                if (entry) entry.classList.add("hot");
+                ogFingerAt(entry);
+            }, 260);
+        },
+        function () { // 2. 메가메뉴 열림 → 수강신청내역 탭
+            ogInfo21Reset(); ogStepsOn(1, OG_INFO21_SCENES.length);
+            var menu = document.getElementById("og-menu");
+            if (menu) menu.classList.add("open");
+            gDelay(function () {
+                var item = document.getElementById("og-menu-item");
+                if (item) item.classList.add("hot");
+                ogFingerAt(item);
+            }, 380);
+        },
+        function () { // 3. 표 확인 + 캡쳐(크롭 + 플래시)
+            ogInfo21Reset(); ogStepsOn(2, OG_INFO21_SCENES.length);
+            ogInfo21ShowTable();
+            gDelay(function () { ogCropAt(document.getElementById("og-target")); }, 200);
+            gDelay(function () {
+                var flash = document.getElementById("og-flash");
+                if (flash) { flash.classList.remove("flash"); void flash.offsetWidth; flash.classList.add("flash"); }
+            }, 900);
+        },
+        function () { // 4. 완료
+            ogInfo21Reset(); ogStepsOn(3, OG_INFO21_SCENES.length);
+            ogInfo21ShowTable();
+            var done = document.getElementById("og-done");
+            if (done) done.classList.add("show");
+        }
+    ];
+
+    var activeGuideScenes = null;
+
+    function gDelay(fn, ms) { guideTimeouts.push(setTimeout(fn, ms)); }
+
+    function stopGuideLoop() {
+        if (guideTimer) { clearInterval(guideTimer); guideTimer = null; }
+        guideTimeouts.forEach(function (id) { clearTimeout(id); });
+        guideTimeouts = [];
+    }
+
+    function startGuideLoop(kind) {
+        stopGuideLoop();
+        activeGuideScenes = (kind === "info21") ? OG_INFO21_SCENES : OG_ETA_SCENES;
+        guideIdx = 0;
+        activeGuideScenes[0]();
+        guideTimer = setInterval(function () {
+            guideIdx = (guideIdx + 1) % activeGuideScenes.length;
+            activeGuideScenes[guideIdx]();
+        }, 3000);
     }
 
     // =====================================================================
